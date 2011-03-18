@@ -40,13 +40,7 @@
 #define MMDAI_GLPMDRENDERENGINE_H_
 
 /* headers */
-#include "GLee.h"
-
-#if defined(__APPLE__)
-#include <OpenGL/glu.h>
-#else
-#include <GL/glu.h>
-#endif
+#include <GLES2/gl2.h>
 
 #include <btBulletDynamicsCommon.h>
 #include <BulletCollision/CollisionShapes/btShapeHull.h>
@@ -135,10 +129,10 @@ namespace MMDAI {
                         float *lightColor);
     void updateProjectionMatrix(const int width,
                                 const int height,
-                                const double scale);
+                                const float scale);
     void applyProjectionMatrix(const int width,
                                const int height,
-                               const double scale);
+                               const float scale);
     void applyModelViewMatrix();
     void updateModelViewMatrix(const btTransform &transMatrix,
                                const btTransform &transMatrixInv);
@@ -167,15 +161,14 @@ namespace MMDAI {
     btScalar m_rotMatrixInv[16];  /* current rotation + inverse of OpenGL rotation matrix */
     btScalar m_newModelViewMatrix[16];
     btScalar m_newProjectionMatrix[16];
-    GLdouble m_modelView[16];
+    GLfloat m_modelView[16];
     float m_shadowMapAutoViewRadius;       /* radius from view point */
 
-    GLuint m_boxList;
-    GLuint m_sphereList;
+    GLuint m_modelProgram;
+    GLuint m_shadowProgram;
+    GLuint m_edgeProgram;
     GLuint m_depthTextureID;
     GLuint m_fboID;
-    bool m_boxListEnabled;
-    bool m_sphereListEnabled;
     bool m_enableShadowMapping;            /* true if shadow mapping */
     bool m_overrideModelViewMatrix;
     bool m_overrideProjectionMatrix;

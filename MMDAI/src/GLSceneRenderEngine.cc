@@ -44,18 +44,117 @@
 #define SHADOW_AUTO_VIEW             /* automatically define depth frustum */
 #define SHADOW_AUTO_VIEW_ANGLE 15.0f /* view angle for automatic depth frustum */
 
+#define MMDAI_STRINGIFY(str) #str
+
+const char *modelVertexShader = MMDAI_STRINGIFY(
+// model.vsh
+attribute vec4 aPosition;
+uniform mat4 uProjection;
+uniform mat4 uModelView;
+void main(void) {
+  gl_Position = uProjection * uModelView * aPosition;
+}
+);
+
+const char *modelFragmentShader = MMDAI_STRINGIFY(
+// model.fsh
+void main(void) {
+  gl_Fragment = 0;
+}
+);
+
+const char *shadowVertexShader = MMDAI_STRINGIFY(
+// shadow.vsh
+attribute vec4 aPosition;
+uniform mat4 uProjection;
+uniform mat4 uModelView;
+uniform mat4 uStageShadow;
+void main(void) {
+  gl_Position = uProjection * uModelView * uStageShadow * aPosition;
+}
+);
+
+const char *shadowFragmentShader = MMDAI_STRINGIFY(
+// shadow.fsh
+void main(void) {
+  gl_Fragment = 0;
+}
+);
+
+const char *edgeVertexShader = MMDAI_STRINGIFY(
+// edge.vsh
+attribute vec4 aPosition;
+attribute vec4 aColor;
+varying vec4 vColor;
+uniform mat4 uProjection;
+uniform mat4 uModelView;
+void main(void) {
+  vColor = aColor;
+  gl_Position = uProjection * uModelView * aPosition;
+}
+);
+
+const char *edgeFragmentShader = MMDAI_STRINGIFY(
+// edge.fsh
+varying vec4 vColor;
+void main(void) {
+  gl_Fragment = vColor;
+}
+);
+
 namespace MMDAI {
+
+static GLuint LoadShader(const char *source, GLenum type)
+{
+  GLuint handle = glCreateShader(type);
+  glShaderSource(handle, 1, &source, 0);
+  glCompileShader(handle);
+  GLint status = 0;
+  glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+  if (status == GL_FALSE) {
+    char message[256];
+    glGetShaderInfoLog(handle, sizeof(message), 0, message);
+    MMDAILogWarn("Failed loading the shader: %s", message);
+    return 0;
+  }
+  return handle;
+}
+
+static GLuint LoadProgram(const char *vsh, const char *fsh)
+{
+  GLuint vertexShader = LoadShader(vsh, GL_VERTEX_SHADER);
+  GLuint fragmentShader = LoadShader(fsh, GL_FRAGMENT_SHADER);
+  if (vertexShader == 0 || fragmentShader == 0) {
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+    return 0;
+  }
+  GLuint handle = glCreateProgram();
+  glAttachShader(handle, vertexShader);
+  glAttachShader(handle, fragmentShader);
+  glLinkProgram(handle);
+  GLint status = 0;
+  glGetProgramiv(handle, GL_LINK_STATUS, &status);
+  glDeleteShader(vertexShader);
+  glDeleteShader(fragmentShader);
+  if (status == GL_FALSE) {
+    char message[256];
+    glGetShaderInfoLog(handle, sizeof(message), 0, message);
+    MMDAILogWarn("Failed linking the program: %s", message);
+    return 0;
+  }
+  return handle;
+}
 
 GLSceneRenderEngine::GLSceneRenderEngine()
   : m_lightVec(btVector3(0.0f, 0.0f, 0.0f)),
     m_shadowMapAutoViewEyePoint(btVector3(0.0f, 0.0f, 0.0f)),
     m_shadowMapAutoViewRadius(0.0f),
-    m_boxList(0),
-    m_sphereList(0),
+    m_modelProgram(0),
+    m_shadowProgram(0),
+    m_edgeProgram(0),
     m_depthTextureID(0),
     m_fboID(0),
-    m_boxListEnabled(false),
-    m_sphereListEnabled(false),
     m_enableShadowMapping(false),
     m_overrideModelViewMatrix(false),
     m_overrideProjectionMatrix(false),
@@ -65,10 +164,14 @@ GLSceneRenderEngine::GLSceneRenderEngine()
 
 GLSceneRenderEngine::~GLSceneRenderEngine()
 {
+  glDeleteProgram(m_modelProgram);
+  glDeleteProgram(m_shadowProgram);
+  glDeleteProgram(m_edgeProgram);
 }
 
 void GLSceneRenderEngine::drawCube()
 {
+#if 0
    static const GLfloat vertices [8][3] = {
       { -0.5f, -0.5f, 0.5f},
       { 0.5f, -0.5f, 0.5f},
@@ -116,10 +219,12 @@ void GLSceneRenderEngine::drawCube()
    glVertex3fv(vertices[5]);
    glVertex3fv(vertices[4]);
    glEnd();
+#endif
 }
 
 void GLSceneRenderEngine::drawSphere(int lats, int longs)
 {
+#if 0
    for (int i = 0; i <= lats; i++) {
       const double lat0 = BULLETPHYSICS_PI * (-0.5 + (double) (i - 1) / lats);
       const double z0 = sin(lat0);
@@ -141,10 +246,12 @@ void GLSceneRenderEngine::drawSphere(int lats, int longs)
       }
       glEnd();
    }
+#endif
 }
 
 void GLSceneRenderEngine::drawConvex(btConvexShape *shape)
 {
+#if 0
    btShapeHull *hull = new btShapeHull(shape);
    hull->buildHull(shape->getMargin());
 
@@ -182,10 +289,12 @@ void GLSceneRenderEngine::drawConvex(btConvexShape *shape)
    }
 
    delete hull;
+#endif
 }
 
 void GLSceneRenderEngine::renderRigidBodies(BulletPhysics *bullet)
 {
+#if 0
    GLfloat color[] = {0.8f, 0.8f, 0.0f, 1.0f};
    GLint polygonMode[2] = { 0, 0 };
    btRigidBody* body = NULL;
@@ -219,32 +328,14 @@ void GLSceneRenderEngine::renderRigidBodies(BulletPhysics *bullet)
             const btBoxShape* boxShape = static_cast<const btBoxShape*>(shape);
             halfExtent = boxShape->getHalfExtentsWithMargin();
             glScaled(2 * halfExtent[0], 2 * halfExtent[1], 2 * halfExtent[2]);
-            if (m_boxListEnabled) {
-               glCallList(m_boxList);
-            }
-            else {
-               m_boxList = glGenLists(1);
-               glNewList(m_boxList, GL_COMPILE);
-               drawCube();
-               glEndList();
-               m_boxListEnabled = true;
-            }
+            drawCube();
             break;
          }
          case SPHERE_SHAPE_PROXYTYPE: {
             sphereShape = static_cast<const btSphereShape*>(shape);
             radius = sphereShape->getMargin(); /* radius doesn't include the margin, so draw with margin */
             glScaled(radius, radius, radius);
-            if (m_sphereListEnabled) {
-               glCallList(m_sphereList);
-            }
-            else {
-               m_sphereList = glGenLists(1);
-               glNewList(m_sphereList, GL_COMPILE);
-               drawSphere(10, 10);
-               glEndList();
-               m_sphereListEnabled = true;
-            }
+            drawSphere(10, 10);
             break;
          }
          default:
@@ -258,10 +349,12 @@ void GLSceneRenderEngine::renderRigidBodies(BulletPhysics *bullet)
    if (polygonMode[1] != GL_LINE) {
       glPolygonMode(GL_FRONT_AND_BACK, polygonMode[1]);
    }
+#endif
 }
 
 void GLSceneRenderEngine::renderBone(PMDBone *bone)
 {
+#if 0
    btScalar m[16];
    PMDBone *parentBone = bone->getParentBone();
    const btTransform *trans = bone->getTransform();
@@ -344,10 +437,12 @@ void GLSceneRenderEngine::renderBone(PMDBone *bone)
    glEnd();
 
    glPopMatrix();
+#endif
 }
 
 void GLSceneRenderEngine::renderBones(PMDModel *model)
 {
+#if 0
    glDisable(GL_DEPTH_TEST);
    glDisable(GL_LIGHTING);
    glDisable(GL_TEXTURE_2D);
@@ -360,6 +455,7 @@ void GLSceneRenderEngine::renderBones(PMDModel *model)
 
    glEnable(GL_DEPTH_TEST);
    glEnable(GL_LIGHTING);
+#endif
 }
 
 /* needs multi-texture function on OpenGL: */
@@ -378,6 +474,7 @@ void GLSceneRenderEngine::renderModel(PMDModel *model)
    glCullFace(GL_FRONT);
 #endif
 
+#if 0
    /* activate texture unit 0 */
    glActiveTextureARB(GL_TEXTURE0_ARB);
    glClientActiveTextureARB(GL_TEXTURE0_ARB);
@@ -620,6 +717,7 @@ void GLSceneRenderEngine::renderModel(PMDModel *model)
    glCullFace(GL_BACK);
    glPopMatrix();
 #endif
+#endif
 }
 
 void GLSceneRenderEngine::renderEdge(PMDModel *model)
@@ -631,8 +729,8 @@ void GLSceneRenderEngine::renderEdge(PMDModel *model)
      return;
 
 #ifndef MMDFILES_CONVERTCOORDINATESYSTEM
-   glPushMatrix();
-   glScalef(1.0f, 1.0f, -1.0f);
+   //glPushMatrix();
+   //glScalef(1.0f, 1.0f, -1.0f);
    glCullFace(GL_BACK);
 #else
    /* draw back surface only */
@@ -642,18 +740,25 @@ void GLSceneRenderEngine::renderEdge(PMDModel *model)
    /* calculate alpha value */
    const float modelAlpha = model->getGlobalAlpha();
    const float *edgeColors = model->getEdgeColors();
+   float colors[4];
+   memcpy(colors, edgeColors, sizeof(colors));
+   colors[3] = modelAlpha;
 
-   glDisable(GL_LIGHTING);
-   glEnableClientState(GL_VERTEX_ARRAY);
-   glVertexPointer(3, GL_FLOAT, sizeof(btVector3), model->getEdgeVerticesPtr());
-   glColor4f(edgeColors[0], edgeColors[1], edgeColors[2], edgeColors[3] * modelAlpha);
+   glUseProgram(m_edgeProgram);
+   GLuint aPosition = glGetAttribLocation(m_edgeProgram, "aPosition");
+   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(btVector3), model->getEdgeVerticesPtr());
+   glEnableVertexAttribArray(aPosition);
+   GLuint aColor = glGetAttribLocation(m_edgeProgram, "aColor");
+   glVertexAttribPointer(aColor, 4, GL_FLOAT, GL_FALSE, sizeof(float), colors);
+   glEnableVertexAttribArray(aColor);
    glDrawElements(GL_TRIANGLES, nsurfaces, GL_UNSIGNED_SHORT, model->getSurfacesForEdgePtr());
-   glDisableClientState(GL_VERTEX_ARRAY);
-   glEnable(GL_LIGHTING);
+   glDisableVertexAttribArray(aPosition);
+   glDisableVertexAttribArray(aColor);
+   glUseProgram(0);
 
    /* draw front again */
 #ifndef MMDFILES_CONVERTCOORDINATESYSTEM
-   glPopMatrix();
+   //glPopMatrix();
    glCullFace(GL_FRONT);
 #else
    glCullFace(GL_BACK);
@@ -667,10 +772,13 @@ void GLSceneRenderEngine::renderShadow(PMDModel *model)
      return;
 
    glDisable(GL_CULL_FACE);
-   glEnableClientState(GL_VERTEX_ARRAY);
-   glVertexPointer(3, GL_FLOAT, sizeof(btVector3), model->getSkinnedVerticesPtr());
+   glUseProgram(m_shadowProgram);
+   GLuint aPosition = glGetAttribLocation(m_shadowProgram, "aPosition");
+   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(btVector3), model->getSkinnedVerticesPtr());
+   glEnableVertexAttribArray(aPosition);
    glDrawElements(GL_TRIANGLES, model->getNumSurface(), GL_UNSIGNED_SHORT, model->getSurfacesPtr());
-   glDisableClientState(GL_VERTEX_ARRAY);
+   glDisableVertexAttribArray(aPosition);
+   glUseProgram(0);
    glEnable(GL_CULL_FACE);
 }
 
@@ -697,9 +805,6 @@ PMDTextureNative *GLSceneRenderEngine::allocateTexture(const unsigned char *data
    }
    glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 
-   /* set highest priority to this texture to tell OpenGL to keep textures in GPU memory */
-   GLfloat priority = 1.0f;
-   glPrioritizeTextures(1, &native->id, &priority);
    return native;
 }
 
@@ -713,19 +818,8 @@ void GLSceneRenderEngine::releaseTexture(PMDTextureNative *native)
 
 void GLSceneRenderEngine::renderModelCached(PMDModel *model, PMDRenderCacheNative **ptr)
 {
-  PMDRenderCacheNative *native = *ptr;
-  if (native != NULL) {
-    glCallList(native->id);
-  }
-  else {
-    *ptr = native = new PMDRenderCacheNative();
-    native->id = glGenLists(1);
-    glNewList(native->id, GL_COMPILE);
-    glPushMatrix();
-    renderModel(model);
-    glPopMatrix();
-    glEndList();
-  }
+  *ptr = NULL;
+  renderModel(model);
 }
 
 void GLSceneRenderEngine::renderTileTexture(PMDTexture *texture,
@@ -740,6 +834,7 @@ void GLSceneRenderEngine::renderTileTexture(PMDTexture *texture,
                                             const bool cullFace,
                                             PMDRenderCacheNative **ptr)
 {
+#if 0
   PMDRenderCacheNative *native = *ptr;
   if (native != NULL) {
     glCallList(native->id);
@@ -777,15 +872,12 @@ void GLSceneRenderEngine::renderTileTexture(PMDTexture *texture,
 
   /* end of regist */
   glEndList();
+#endif
 }
 
 void GLSceneRenderEngine::deleteCache(PMDRenderCacheNative **ptr)
 {
-  PMDRenderCacheNative *native = *ptr;
-  if (native != NULL) {
-    delete native;
-    *ptr = 0;
-  }
+  *ptr = NULL;
 }
 
 /* setup: initialize and setup Renderer */
@@ -813,6 +905,10 @@ bool GLSceneRenderEngine::setup(float *campusColor,
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+  m_modelProgram = LoadProgram(modelVertexShader, modelFragmentShader);
+  m_shadowProgram = LoadProgram(shadowVertexShader, shadowFragmentShader);
+  m_edgeProgram = LoadProgram(edgeVertexShader, edgeFragmentShader);
+#if 0
   /* enable alpha test, to avoid zero-alpha surfaces to depend on the Renderering order */
   glEnable(GL_ALPHA_TEST);
   glAlphaFunc(GL_GEQUAL, 0.05f);
@@ -820,6 +916,7 @@ bool GLSceneRenderEngine::setup(float *campusColor,
   /* enable lighting */
   glEnable(GL_LIGHT0);
   glEnable(GL_LIGHTING);
+#endif
 
   /* initialization for shadow mapping */
   setShadowMapping(useShadowMapping, shadowMapTextureSize, shadowMapLightFirst);
@@ -830,6 +927,7 @@ bool GLSceneRenderEngine::setup(float *campusColor,
 /* GLSceneRenderEngine::initializeShadowMap: initialize OpenGL for shadow mapping */
 void GLSceneRenderEngine::initializeShadowMap(int shadowMapTextureSize)
 {
+#if 0
   static const GLdouble genfunc[][4] = {
     { 1.0, 0.0, 0.0, 0.0 },
     { 0.0, 1.0, 0.0, 0.0 },
@@ -905,11 +1003,13 @@ void GLSceneRenderEngine::initializeShadowMap(int shadowMapTextureSize)
 
   /* restore the model view matrix */
   glPopMatrix();
+#endif
 }
 
 /* GLSceneRenderEngine::setShadowMapping: switch shadow mapping */
 void GLSceneRenderEngine::setShadowMapping(bool flag, int shadowMapTextureSize, bool shadowMapLightFirst)
 {
+#if 0
   m_enableShadowMapping = flag;
 
   if (m_enableShadowMapping) {
@@ -942,11 +1042,13 @@ void GLSceneRenderEngine::setShadowMapping(bool flag, int shadowMapTextureSize, 
     }
     MMDAILogInfoString("Shadow mapping disabled");
   }
+#endif
 }
 
 /* GLSceneRenderEngine::RendererSceneShadowMap: shadow mapping */
 void GLSceneRenderEngine::renderSceneShadowMap(Option *option, Stage *stage, PMDObject **objects, int size)
 {
+#if 0
   int i = 0;
   static GLfloat lightdim[] = { 0.2f, 0.2f, 0.2f, 1.0f };
   static const GLfloat lightblk[] = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -1132,6 +1234,7 @@ void GLSceneRenderEngine::renderSceneShadowMap(Option *option, Stage *stage, PMD
   glDisable(GL_TEXTURE_GEN_Q);
   glDisable(GL_TEXTURE_2D);
   glActiveTextureARB(GL_TEXTURE0_ARB);
+#endif
 }
 
 /* GLSceneRenderEngine::RendererScene: Renderer scene */
@@ -1140,16 +1243,13 @@ void GLSceneRenderEngine::renderScene(Option *option,
                                       PMDObject **objects,
                                       int size)
 {
-  int i = 0;
-
   glEnable(GL_CULL_FACE);
   glEnable(GL_BLEND);
 
   /* set model viwe matrix */
   applyModelViewMatrix();
-
   /* stage and shadhow */
-  glPushMatrix();
+  //glPushMatrix();
   /* background */
   stage->renderBackground();
   /* enable stencil */
@@ -1168,31 +1268,32 @@ void GLSceneRenderEngine::renderScene(Option *option,
   glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
   /* Render model */
   glDisable(GL_DEPTH_TEST);
-  for (i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++) {
     PMDObject *object = objects[i];
     if (!object->isEnable())
       continue;
-    glPushMatrix();
-    glMultMatrixf(stage->getShadowMatrix());
+    //glPushMatrix();
+    //glMultMatrixf(stage->getShadowMatrix());
+    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uStageShadow"), 1, 0, stage->getShadowMatrix());
     renderShadow(object->getPMDModel());
-    glPopMatrix();
+    //glPopMatrix();
   }
   glEnable(GL_DEPTH_TEST);
   glColorMask(1, 1, 1, 1);
   glDepthMask(1);
   /* if stencil is 2, Renderer shadow with blend on */
   glStencilFunc(GL_EQUAL, 2, ~0);
-  glDisable(GL_LIGHTING);
-  glColor4f(0.1f, 0.1f, 0.1f, option->getShadowMappingSelfDensity());
+  //glDisable(GL_LIGHTING);
+  //glColor4f(0.1f, 0.1f, 0.1f, option->getShadowMappingSelfDensity());
   glDisable(GL_DEPTH_TEST);
   stage->renderFloor();
   glEnable(GL_DEPTH_TEST);
   glDisable(GL_STENCIL_TEST);
-  glEnable(GL_LIGHTING);
-  glPopMatrix();
+  //glEnable(GL_LIGHTING);
+  //glPopMatrix();
 
   /* Render model */
-  for (i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++) {
     PMDObject *object = objects[i];
     if (!object->isEnable())
       continue;
@@ -1207,6 +1308,7 @@ void GLSceneRenderEngine::prerender(Option *option,
                                     int size)
 {
   if (m_enableShadowMapping) {
+#if 0
     int i = 0;
     GLint viewport[4]; /* store viewport */
     GLdouble projection[16]; /* store projection transform */
@@ -1225,14 +1327,14 @@ void GLSceneRenderEngine::prerender(Option *option,
 
     /* switch to FBO for depth buffer Renderering */
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fboID);
-
+#endif
     /* clear the buffer */
     /* clear only the depth buffer, since other buffers will not be used */
     glClear(GL_DEPTH_BUFFER_BIT);
 
     /* set the viewport to the required texture size */
     glViewport(0, 0, option->getShadowMappingTextureSize(), option->getShadowMappingTextureSize());
-
+#if 0
     /* reset the projection matrix */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -1308,7 +1410,7 @@ void GLSceneRenderEngine::prerender(Option *option,
     glEnable(GL_LIGHTING);
     glCullFace(GL_BACK);
     glEnable(GL_ALPHA_TEST);
-
+#endif
     /* clear all the buffers */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
   }
@@ -1340,6 +1442,7 @@ int GLSceneRenderEngine::pickModel(PMDObject **objects,
                                    double scale,
                                    int *allowDropPicked)
 {
+#if 0
   int i;
 
   GLuint selectionBuffer[512];
@@ -1414,6 +1517,9 @@ int GLSceneRenderEngine::pickModel(PMDObject **objects,
     *allowDropPicked = minIDAllowDrop;
 
   return minID;
+#else
+  return 0;
+#endif
 }
 
 /* GLSceneRenderEngine::updateLigithing: update light */
@@ -1456,10 +1562,12 @@ void GLSceneRenderEngine::updateLighting(bool useCartoonRendering,
     fLightSpc[i] = lightColor[i] * s;
   fLightSpc[3] = 1.0f;
 
+#if 0
   glLightfv(GL_LIGHT0, GL_POSITION, lightDirection);
   glLightfv(GL_LIGHT0, GL_DIFFUSE, fLightDif);
   glLightfv(GL_LIGHT0, GL_AMBIENT, fLightAmb);
   glLightfv(GL_LIGHT0, GL_SPECULAR, fLightSpc);
+#endif
 
   /* update light direction vector */
   m_lightVec = btVector3(lightDirection[0], lightDirection[1], lightDirection[2]);
@@ -1469,41 +1577,75 @@ void GLSceneRenderEngine::updateLighting(bool useCartoonRendering,
 /* GLSceneRenderEngine::updateProjectionMatrix: update view information */
 void GLSceneRenderEngine::updateProjectionMatrix(const int width,
                                                  const int height,
-                                                 const double scale)
+                                                 const float scale)
 {
   glViewport(0, 0, width, height);
-  /* camera setting */
-  glMatrixMode(GL_PROJECTION);
   applyProjectionMatrix(width, height, scale);
-  glMatrixMode(GL_MODELVIEW);
 }
 
 /* GLSceneRenderEngine::applyProjectionMatirx: update projection matrix */
 void GLSceneRenderEngine::applyProjectionMatrix(const int width,
                                                 const int height,
-                                                const double scale)
+                                                const float scale)
 {
   if (m_overrideProjectionMatrix) {
-    glLoadMatrixf(m_newProjectionMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
     m_overrideProjectionMatrix = false;
   }
   else {
-    double aspect = (double) height / (double) width;
-    double ratio = (scale == 0.0f) ? 1.0 : 1.0 / scale; /* m_currentScale */
-    glLoadIdentity();
-    glFrustum(- ratio, ratio, - aspect * ratio, aspect * ratio, RENDER_VIEWPOINT_FRUSTUM_NEAR, RENDER_VIEWPOINT_FRUSTUM_FAR);
+    float aspect = (float) height / (float) width;
+    float ratio = (scale == 0.0f) ? 1.0f : 1.0f / scale; /* m_currentScale */
+    float left = -ratio;
+    float right = ratio;
+    float bottom = -aspect * ratio;
+    float top = aspect * ratio;
+    float farZ = RENDER_VIEWPOINT_FRUSTUM_FAR;
+    float nearZ = RENDER_VIEWPOINT_FRUSTUM_NEAR;
+    float deltaX = right - left;
+    float deltaY = top - bottom;
+    float deltaZ = farZ - nearZ;
+    if (deltaX > 0 && deltaY > 0 && deltaZ > 0) {
+      float m[4][4];
+      m[0][0] = 2.0f * nearZ / deltaX;
+      m[0][1] = m[0][2] = m[0][3] = 0.0f;
+      m[1][1] = 2.0f * nearZ / deltaY;
+      m[1][0] = m[1][2] = m[1][3] = 0.0f;
+      m[2][0] = (right + left) / deltaX;
+      m[2][1] = (top + bottom) / deltaY;
+      m[2][2] = -(nearZ + farZ) / deltaZ;
+      m[2][3] = -1.0f;
+      m[3][2] = -2.0f * nearZ * farZ / deltaZ;
+      m[3][0] = m[3][1] = m[3][3] = 0.0f;
+      glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uProjection"), 1, 0, m[0]);
+      glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uProjection"), 1, 0, m[0]);
+      glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uProjection"), 1, 0, m[0]);
+    }
   }
 }
 
 void GLSceneRenderEngine::applyModelViewMatrix()
 {
-  glLoadIdentity();
   if (m_overrideModelViewMatrix) {
-    glLoadMatrixf(m_newModelViewMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
     m_overrideModelViewMatrix = false;
   }
   else {
+    float matrix[16] = {
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1
+    };
+    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uModelView"), 1, 0, matrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uModelView"), 1, 0, matrix);
+    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uModelView"), 1, 0, matrix);
+#if 0
     glMultMatrixf(m_rotMatrix);
+#endif
   }
 }
 

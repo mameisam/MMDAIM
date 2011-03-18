@@ -245,7 +245,7 @@ bool Stage::loadStagePMD(PMDModelLoader *loader, BulletPhysics *bullet)
     m_pmd.updateSkin();
     m_hasPMD = true;
     if (m_listIndexPMDValid) {
-      glDeleteLists(m_listIndexPMD, 1);
+      //glDeleteLists(m_listIndexPMD, 1);
       m_listIndexPMDValid = false;
     }
   } else {
