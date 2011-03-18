@@ -48,7 +48,17 @@
 
 const char *modelVertexShader = MMDAI_STRINGIFY(
 // model.vsh
+struct material {
+  vec4 ambient;
+  vec4 diffuse;
+  vec4 specular;
+  float shiness;
+};
 attribute vec4 aPosition;
+attribute vec4 aModelTexCoord;
+attribute vec4 aToonTexCoord;
+attribute vec4 aSphereTexCoord;
+varying vec4 vTexCoords[3];
 uniform mat4 uProjection;
 uniform mat4 uModelView;
 void main(void) {
@@ -57,9 +67,14 @@ void main(void) {
 );
 
 const char *modelFragmentShader = MMDAI_STRINGIFY(
+precision mediump float;
+varying vec4 vTexCoords[3];
+uniform sampler2D uModelTexture;
+uniform sampler2D uToonTexture;
+uniform sampler2D uAddSphereTexture;
 // model.fsh
 void main(void) {
-  gl_Fragment = 0;
+  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
 );
 
@@ -70,14 +85,14 @@ uniform mat4 uProjection;
 uniform mat4 uModelView;
 uniform mat4 uStageShadow;
 void main(void) {
-  gl_Position = uProjection * uModelView * uStageShadow * aPosition;
+  gl_Position = uProjection * uModelView * aPosition;
 }
 );
 
 const char *shadowFragmentShader = MMDAI_STRINGIFY(
 // shadow.fsh
 void main(void) {
-  gl_Fragment = 0;
+  gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
 }
 );
 
@@ -96,9 +111,10 @@ void main(void) {
 
 const char *edgeFragmentShader = MMDAI_STRINGIFY(
 // edge.fsh
+precision mediump float;
 varying vec4 vColor;
 void main(void) {
-  gl_Fragment = vColor;
+  gl_FragColor = vColor;
 }
 );
 
@@ -112,9 +128,16 @@ static GLuint LoadShader(const char *source, GLenum type)
   GLint status = 0;
   glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
   if (status == GL_FALSE) {
-    char message[256];
-    glGetShaderInfoLog(handle, sizeof(message), 0, message);
-    MMDAILogWarn("Failed loading the shader: %s", message);
+    GLint len = 0;
+    glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &len);
+    if (len > 0) {
+      char *message = static_cast<char *>(MMDAIMemoryAllocate(len));
+      if (message != NULL) {
+        glGetShaderInfoLog(handle, len, 0, message);
+        MMDAILogWarn("Failed loading the shader: %s", message);
+        MMDAIMemoryRelease(message);
+      }
+    }
     return 0;
   }
   return handle;
@@ -123,10 +146,12 @@ static GLuint LoadShader(const char *source, GLenum type)
 static GLuint LoadProgram(const char *vsh, const char *fsh)
 {
   GLuint vertexShader = LoadShader(vsh, GL_VERTEX_SHADER);
+  if (vertexShader == 0) {
+    return 0;
+  }
   GLuint fragmentShader = LoadShader(fsh, GL_FRAGMENT_SHADER);
-  if (vertexShader == 0 || fragmentShader == 0) {
+  if (fragmentShader == 0) {
     glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
     return 0;
   }
   GLuint handle = glCreateProgram();
@@ -138,9 +163,17 @@ static GLuint LoadProgram(const char *vsh, const char *fsh)
   glDeleteShader(vertexShader);
   glDeleteShader(fragmentShader);
   if (status == GL_FALSE) {
-    char message[256];
-    glGetShaderInfoLog(handle, sizeof(message), 0, message);
-    MMDAILogWarn("Failed linking the program: %s", message);
+    GLint len = 0;
+    glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &len);
+    if (len > 0) {
+      char *message = static_cast<char *>(MMDAIMemoryAllocate(len));
+      if (message != NULL) {
+        glGetProgramInfoLog(handle, len, 0, message);
+        MMDAILogWarn("Failed linking the program: %s", message);
+        MMDAIMemoryRelease(message);
+      }
+    }
+    glDeleteProgram(handle);
     return 0;
   }
   return handle;
@@ -442,9 +475,8 @@ void GLSceneRenderEngine::renderBone(PMDBone *bone)
 
 void GLSceneRenderEngine::renderBones(PMDModel *model)
 {
-#if 0
    glDisable(GL_DEPTH_TEST);
-   glDisable(GL_LIGHTING);
+   //glDisable(GL_LIGHTING);
    glDisable(GL_TEXTURE_2D);
 
    /* draw bones */
@@ -454,8 +486,7 @@ void GLSceneRenderEngine::renderBones(PMDModel *model)
       renderBone(&bones[i]);
 
    glEnable(GL_DEPTH_TEST);
-   glEnable(GL_LIGHTING);
-#endif
+   //glEnable(GL_LIGHTING);
 }
 
 /* needs multi-texture function on OpenGL: */
@@ -467,25 +498,34 @@ void GLSceneRenderEngine::renderModel(PMDModel *model)
    const btVector3 *vertices = model->getVerticesPtr();
    if (!vertices)
      return;
+   
+   glUseProgram(m_modelProgram);
 
 #ifndef MMDFILES_CONVERTCOORDINATESYSTEM
-   glPushMatrix();
-   glScalef(1.0f, 1.0f, -1.0f); /* from left-hand to right-hand */
+   //glPushMatrix();
+   //glScalef(1.0f, 1.0f, -1.0f); /* from left-hand to right-hand */
    glCullFace(GL_FRONT);
 #endif
 
-#if 0
    /* activate texture unit 0 */
-   glActiveTextureARB(GL_TEXTURE0_ARB);
-   glClientActiveTextureARB(GL_TEXTURE0_ARB);
+   glActiveTexture(GL_TEXTURE0);
 
-   /* set lists */
+   /* set lists */   
+   GLint aPosition = glGetAttribLocation(m_modelProgram, "aPosition");
+   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, 0, model->getSkinnedVerticesPtr());
+   glEnableVertexAttribArray(aPosition);
+
+#if 0
    glEnableClientState(GL_VERTEX_ARRAY);
    glEnableClientState(GL_NORMAL_ARRAY);
    glVertexPointer(3, GL_FLOAT, sizeof(btVector3), model->getSkinnedVerticesPtr());
    glNormalPointer(GL_FLOAT, sizeof(btVector3), model->getSkinnedNormalsPtr());
 
    /* set model texture coordinates to texture unit 0 */
+   GLint aModelTexCoord = glGetAttribLocation(m_modelProgram, "aModelTexCoord");
+   glVertexAttribPointer(aModelTexCoord, 2, GL_FLOAT, GL_FALSE, 0, model->getTexCoordsPtr());
+   glEnableVertexAttribArray(aModelTexCoord);
+
    glClientActiveTextureARB(GL_TEXTURE0_ARB);
    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
    glTexCoordPointer(2, GL_FLOAT, 0, model->getTexCoordsPtr());
@@ -715,9 +755,10 @@ void GLSceneRenderEngine::renderModel(PMDModel *model)
    glEnable(GL_CULL_FACE);
 #ifndef MMDFILES_CONVERTCOORDINATESYSTEM
    glCullFace(GL_BACK);
-   glPopMatrix();
+   //glPopMatrix();
 #endif
 #endif
+   glUseProgram(0);
 }
 
 void GLSceneRenderEngine::renderEdge(PMDModel *model)
@@ -740,21 +781,17 @@ void GLSceneRenderEngine::renderEdge(PMDModel *model)
    /* calculate alpha value */
    const float modelAlpha = model->getGlobalAlpha();
    const float *edgeColors = model->getEdgeColors();
-   float colors[4];
-   memcpy(colors, edgeColors, sizeof(colors));
-   colors[3] = modelAlpha;
 
    glUseProgram(m_edgeProgram);
    GLuint aPosition = glGetAttribLocation(m_edgeProgram, "aPosition");
-   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(btVector3), model->getEdgeVerticesPtr());
+   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, 0, model->getEdgeVerticesPtr());
    glEnableVertexAttribArray(aPosition);
+#if 0
    GLuint aColor = glGetAttribLocation(m_edgeProgram, "aColor");
-   glVertexAttribPointer(aColor, 4, GL_FLOAT, GL_FALSE, sizeof(float), colors);
+   glVertexAttribPointer(aColor, 4, GL_FLOAT, GL_FALSE, 0, edgeColors);
    glEnableVertexAttribArray(aColor);
+#endif
    glDrawElements(GL_TRIANGLES, nsurfaces, GL_UNSIGNED_SHORT, model->getSurfacesForEdgePtr());
-   glDisableVertexAttribArray(aPosition);
-   glDisableVertexAttribArray(aColor);
-   glUseProgram(0);
 
    /* draw front again */
 #ifndef MMDFILES_CONVERTCOORDINATESYSTEM
@@ -763,6 +800,7 @@ void GLSceneRenderEngine::renderEdge(PMDModel *model)
 #else
    glCullFace(GL_BACK);
 #endif
+   glUseProgram(0);
 }
 
 void GLSceneRenderEngine::renderShadow(PMDModel *model)
@@ -774,12 +812,11 @@ void GLSceneRenderEngine::renderShadow(PMDModel *model)
    glDisable(GL_CULL_FACE);
    glUseProgram(m_shadowProgram);
    GLuint aPosition = glGetAttribLocation(m_shadowProgram, "aPosition");
-   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(btVector3), model->getSkinnedVerticesPtr());
+   glVertexAttribPointer(aPosition, 3, GL_FLOAT, GL_FALSE, 0, model->getSkinnedVerticesPtr());
    glEnableVertexAttribArray(aPosition);
    glDrawElements(GL_TRIANGLES, model->getNumSurface(), GL_UNSIGNED_SHORT, model->getSurfacesPtr());
-   glDisableVertexAttribArray(aPosition);
-   glUseProgram(0);
    glEnable(GL_CULL_FACE);
+   glUseProgram(0);
 }
 
 PMDTextureNative *GLSceneRenderEngine::allocateTexture(const unsigned char *data,
@@ -1250,13 +1287,16 @@ void GLSceneRenderEngine::renderScene(Option *option,
   applyModelViewMatrix();
   /* stage and shadhow */
   //glPushMatrix();
+
   /* background */
-  stage->renderBackground();
+  //stage->renderBackground();
+
   /* enable stencil */
   glEnable(GL_STENCIL_TEST);
   glStencilFunc(GL_ALWAYS, 1, ~0);
   /* make stencil tag true */
   glStencilOp(GL_KEEP, GL_KEEP , GL_REPLACE);
+
   /* Renderer floor */
   stage->renderFloor();
   /* Renderer shadow stencil */
@@ -1268,6 +1308,7 @@ void GLSceneRenderEngine::renderScene(Option *option,
   glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
   /* Render model */
   glDisable(GL_DEPTH_TEST);
+  glUseProgram(m_modelProgram);
   for (int i = 0; i < size; i++) {
     PMDObject *object = objects[i];
     if (!object->isEnable())
@@ -1286,12 +1327,13 @@ void GLSceneRenderEngine::renderScene(Option *option,
   //glDisable(GL_LIGHTING);
   //glColor4f(0.1f, 0.1f, 0.1f, option->getShadowMappingSelfDensity());
   glDisable(GL_DEPTH_TEST);
+
   stage->renderFloor();
+
   glEnable(GL_DEPTH_TEST);
   glDisable(GL_STENCIL_TEST);
   //glEnable(GL_LIGHTING);
   //glPopMatrix();
-
   /* Render model */
   for (int i = 0; i < size; i++) {
     PMDObject *object = objects[i];
@@ -1299,7 +1341,7 @@ void GLSceneRenderEngine::renderScene(Option *option,
       continue;
     PMDModel *model = object->getPMDModel();
     renderModel(model);
-    renderEdge(model);
+    //renderEdge(model);
   }
 }
 
@@ -1588,10 +1630,15 @@ void GLSceneRenderEngine::applyProjectionMatrix(const int width,
                                                 const int height,
                                                 const float scale)
 {
+  const float *ptr;
+  float m[4][4] = {
+    { 1, 0, 0, 0 },
+    { 0, 1, 0, 0 },
+    { 0, 0, 1, 0 },
+    { 0, 0, 0, 1 }
+  };
   if (m_overrideProjectionMatrix) {
-    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uProjection"), 1, 0, m_newProjectionMatrix);
+    ptr = m_newProjectionMatrix;
     m_overrideProjectionMatrix = false;
   }
   else {
@@ -1607,7 +1654,6 @@ void GLSceneRenderEngine::applyProjectionMatrix(const int width,
     float deltaY = top - bottom;
     float deltaZ = farZ - nearZ;
     if (deltaX > 0 && deltaY > 0 && deltaZ > 0) {
-      float m[4][4];
       m[0][0] = 2.0f * nearZ / deltaX;
       m[0][1] = m[0][2] = m[0][3] = 0.0f;
       m[1][1] = 2.0f * nearZ / deltaY;
@@ -1618,19 +1664,26 @@ void GLSceneRenderEngine::applyProjectionMatrix(const int width,
       m[2][3] = -1.0f;
       m[3][2] = -2.0f * nearZ * farZ / deltaZ;
       m[3][0] = m[3][1] = m[3][3] = 0.0f;
-      glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uProjection"), 1, 0, m[0]);
-      glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uProjection"), 1, 0, m[0]);
-      glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uProjection"), 1, 0, m[0]);
     }
+    ptr = &m[0][0];
   }
+  GLint loc = 0;
+  glUseProgram(m_modelProgram);
+  loc = glGetUniformLocation(m_modelProgram, "uProjection");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
+  glUseProgram(m_shadowProgram);
+  loc = glGetUniformLocation(m_shadowProgram, "uProjection");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
+  glUseProgram(m_edgeProgram);
+  loc = glGetUniformLocation(m_edgeProgram, "uProjection");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
 }
 
 void GLSceneRenderEngine::applyModelViewMatrix()
 {
+  const float *ptr;
   if (m_overrideModelViewMatrix) {
-    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uModelView"), 1, 0, m_newModelViewMatrix);
+    ptr = m_newModelViewMatrix;
     m_overrideModelViewMatrix = false;
   }
   else {
@@ -1640,13 +1693,21 @@ void GLSceneRenderEngine::applyModelViewMatrix()
       0, 0, 1, 0,
       0, 0, 0, 1
     };
-    glUniformMatrix4fv(glGetUniformLocation(m_modelProgram, "uModelView"), 1, 0, matrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_shadowProgram, "uModelView"), 1, 0, matrix);
-    glUniformMatrix4fv(glGetUniformLocation(m_edgeProgram, "uModelView"), 1, 0, matrix);
+    ptr = matrix;
 #if 0
     glMultMatrixf(m_rotMatrix);
 #endif
   }
+  GLint loc = 0;
+  glUseProgram(m_modelProgram);
+  loc = glGetUniformLocation(m_modelProgram, "uModelView");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
+  glUseProgram(m_shadowProgram);
+  loc = glGetUniformLocation(m_shadowProgram, "uModelView");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
+  glUseProgram(m_edgeProgram);
+  loc = glGetUniformLocation(m_edgeProgram, "uModelView");
+  glUniformMatrix4fv(loc, 1, 0, ptr);
 }
 
 void GLSceneRenderEngine::updateModelViewMatrix(const btTransform &transMatrix,
