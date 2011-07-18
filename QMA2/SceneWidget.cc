@@ -47,7 +47,7 @@ namespace internal
 
 typedef QScopedPointer<uint8_t, QScopedPointerArrayDeleter<uint8_t> > ByteArrayPtr;
 
-class Delegate : public vpvl::gl::Delegate
+class Delegate : public vpvl::gl::IDelegate
 {
 public:
     Delegate(QGLWidget *widget)
@@ -285,13 +285,13 @@ private:
 
 }
 
-SceneWidget::SceneWidget(QSettings *settings, QWidget *parent) :
+SceneWidget::SceneWidget(QWidget *parent) :
     QGLWidget(QGLFormat(QGL::SampleBuffers), parent),
     m_camera(0),
     m_delegate(0),
     m_grid(0),
     m_world(0),
-    m_settings(settings),
+    m_settings(0),
     m_gridListID(0),
     m_frameCount(0),
     m_currentFPS(0),
@@ -389,7 +389,28 @@ void SceneWidget::insertMotionToSelectedModel()
         startSceneUpdateTimer();
     }
     else {
-        QMessageBox::warning(this, tr("The model is not selected."), tr("Select a motion to insert the motion"));
+        QMessageBox::warning(this, tr("The model is not selected."), tr("Select a model to insert the motion"));
+    }
+}
+
+void SceneWidget::setModelPose()
+{
+    vpvl::PMDModel *selected = m_renderer->selectedModel();
+    if (selected) {
+        stopSceneUpdateTimer();
+        QString fileName = openFileDialog("sceneWidget/lastVPDDirectory", tr("Open VPD file"), tr("VPD file (*.vpd)"));
+        if (QFile::exists(fileName)) {
+            vpvl::VPDPose *pose = setModelPoseInternal(selected, fileName);
+            if (!pose)
+                QMessageBox::warning(this, tr("Loading model pose error"),
+                                     tr("%1 cannot be loaded").arg(QFileInfo(fileName).fileName()));
+            else
+                delete pose;
+        }
+        startSceneUpdateTimer();
+    }
+    else {
+        QMessageBox::warning(this, tr("The model is not selected."), tr("Select a model to set the pose"));
     }
 }
 
@@ -705,7 +726,7 @@ vpvl::VMDMotion *SceneWidget::addMotionInternal(vpvl::PMDModel *model, const QSt
         if (motion->load(reinterpret_cast<const uint8_t *>(data.constData()), data.size())) {
             model->addMotion(motion);
             m_motions.append(motion);
-            emit motionDidAdd(motion);
+            emit motionDidAdd(motion, model);
         }
         else {
             delete motion;
@@ -713,6 +734,25 @@ vpvl::VMDMotion *SceneWidget::addMotionInternal(vpvl::PMDModel *model, const QSt
         }
     }
     return motion;
+}
+
+vpvl::VPDPose *SceneWidget::setModelPoseInternal(vpvl::PMDModel *model, const QString &path)
+{
+    QFile file(path);
+    vpvl::VPDPose *pose = 0;
+    if (file.open(QFile::ReadOnly)) {
+        QByteArray data = file.readAll();
+        pose = new vpvl::VPDPose();
+        if (pose->load(reinterpret_cast<const uint8_t *>(data.constData()), data.size())) {
+            pose->makePose(model);
+            emit modelDidMakePose(pose, model);
+        }
+        else {
+            delete pose;
+            pose = 0;
+        }
+    }
+    return pose;
 }
 
 vpvl::VMDMotion *SceneWidget::setCameraInternal(const QString &path)
