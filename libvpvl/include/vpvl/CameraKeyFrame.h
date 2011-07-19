@@ -36,63 +36,81 @@
 /* POSSIBILITY OF SUCH DAMAGE.                                       */
 /* ----------------------------------------------------------------- */
 
-#ifndef VPVL_FACEKEYFRAME_H_
-#define VPVL_FACEKEYFRAME_H_
+#ifndef VPVL_CAMERAKEYFRAME_H_
+#define VPVL_CAMERAKEYFRAME_H_
 
 #include <LinearMath/btAlignedObjectArray.h>
+#include <LinearMath/btVector3.h>
 #include "vpvl/common.h"
 #include "vpvl/internal/util.h"
 
 namespace vpvl
 {
 
-class Face;
-
-class FaceKeyFrame
+class CameraKeyFrame
 {
 public:
-    FaceKeyFrame() : m_frameIndex(0), m_weight(0.0f) {
-        internal::zerofill(m_name, sizeof(m_name));
-    }
-    ~FaceKeyFrame() {
-        internal::zerofill(m_name, sizeof(m_name));
-    }
+    CameraKeyFrame();
+    ~CameraKeyFrame();
 
-    static const int kNameSize = 15;
+    static const int kTableSize = 24;
 
-    static size_t stride() {
-        return kNameSize + sizeof(uint32_t) + sizeof(float);
-    }
+    static size_t stride();
 
-    void read(const uint8_t *data) {
-        uint8_t *ptr = const_cast<uint8_t *>(data);
-        copyBytesSafe(m_name, ptr, sizeof(m_name));
-        ptr += sizeof(m_name);
-        uint32_t index = *reinterpret_cast<uint32_t *>(ptr);
-        ptr += sizeof(uint32_t);
-        float weight = *reinterpret_cast<float *>(ptr);
-        ptr += sizeof(float);
+    void read(const uint8_t *data);
+    void write(uint8_t *data);
 
-        m_frameIndex = static_cast<float>(index);
-        m_weight = weight;
-    }
-
-    const uint8_t *name() const {
-        return m_name;
-    }
     float frameIndex() const {
         return m_frameIndex;
     }
-    float weight() const {
-        return m_weight;
+    float distance() const {
+        return m_distance;
+    }
+    float fovy() const {
+        return m_fovy;
+    }
+    const btVector3 &position() const {
+        return m_position;
+    }
+    const btVector3 &angle() const {
+        return m_angle;
+    }
+    const bool *linear() const {
+        return m_linear;
+    }
+    const float *const *interpolationTable() const {
+        return m_interpolationTable;
+    }
+
+    void setFrameIndex(float value) {
+        m_frameIndex = value;
+    }
+    void setDistance(float value) {
+        m_distance = value;
+    }
+    void setFovy(float value) {
+        m_fovy = value;
+    }
+    void setPosition(const btVector3 &value) {
+        m_position = value;
+    }
+    void setAngle(const btVector3 &value) {
+        m_angle = value;
     }
 
 private:
-    uint8_t m_name[kNameSize];
-    float m_frameIndex;
-    float m_weight;
+    void setInterpolationTable(const int8_t *table);
 
-    VPVL_DISABLE_COPY_AND_ASSIGN(FaceKeyFrame)
+    float m_frameIndex;
+    float m_distance;
+    float m_fovy;
+    btVector3 m_position;
+    btVector3 m_angle;
+    bool m_noPerspective;
+    bool m_linear[6];
+    float *m_interpolationTable[6];
+
+    VPVL_DISABLE_COPY_AND_ASSIGN(CameraKeyFrame)
 };
 
 }

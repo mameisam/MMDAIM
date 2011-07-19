@@ -1,19 +1,27 @@
 cmake_minimum_required(VERSION 2.6)
 
+set(VPVL_VERSION_MAJOR 0)
+set(VPVL_VERSION_COMPAT 1)
+set(VPVL_VERSION_MINOR 0)
+set(VPVL_VERSION_PATCH 0)
+
 # set library version
-set(VPVL_VERSION 0.1.0)
-set(VPVL_VERSION_COMPATIBLE 0.1.0)
+set(VPVL_VERSION "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.${VPVL_VERSION_MINOR}.${VPVL_VERSION_PATCH}")
+set(VPVL_VERSION_COMPATIBLE "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.0.0")
 
 # project configuration
 project(libvpvl)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src vpvl_sources)
 set(vpvl_public_headers
     include/vpvl/BaseMotion.h
+    include/vpvl/BoneKeyFrame.h
     include/vpvl/Bone.h
     include/vpvl/BoneMotion.h
+    include/vpvl/CameraKeyFrame.h
     include/vpvl/CameraMotion.h
     include/vpvl/Constraint.h
     include/vpvl/Face.h
+    include/vpvl/FaceKeyFrame.h
     include/vpvl/FaceMotion.h
     include/vpvl/IK.h
     include/vpvl/Material.h
@@ -30,9 +38,6 @@ set(vpvl_public_headers
     include/vpvl/vpvl.h
 )
 set(vpvl_internal_headers
-    include/vpvl/internal/BoneKeyFrame.h
-    include/vpvl/internal/CameraKeyFrame.h
-    include/vpvl/internal/FaceKeyFrame.h
     include/vpvl/internal/util.h
 )
 
@@ -200,7 +205,7 @@ endif()
 # extra test program
 option(VPVL_BUILD_TESTS "Build test programs (default is OFF)" OFF)
 if(VPVL_BUILD_TESTS)
-  aux_source_directory(test vpvl_test_sources)
+  aux_source_directory(gtest vpvl_test_sources)
   add_executable(vpvl_test ${vpvl_test_sources} ${vpvl_public_headers} ${vpvl_internal_headers})
   find_library(GTEST_LIB gtest PATH ${GTEST_LIBRARY_DIR})
   find_library(GTEST_MAIN_LIB gtest_main PATH ${GTEST_LIBRARY_DIR})
