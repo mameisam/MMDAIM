@@ -36,71 +36,30 @@
 /* POSSIBILITY OF SUCH DAMAGE.                                       */
 /* ----------------------------------------------------------------- */
 
-#ifndef VPVL_BONEKEYFRAME_H_
-#define VPVL_BONEKEYFRAME_H_
+#ifndef VPVL_FACEKEYFRAME_H_
+#define VPVL_FACEKEYFRAME_H_
 
 #include <LinearMath/btAlignedObjectArray.h>
-#include <LinearMath/btQuaternion.h>
-#include <LinearMath/btVector3.h>
 #include "vpvl/common.h"
 #include "vpvl/internal/util.h"
 
 namespace vpvl
 {
 
-class Bone;
+class Face;
 
-class BoneKeyFrame
+class FaceKeyFrame
 {
 public:
-    BoneKeyFrame()
-        : m_frameIndex(0),
-          m_position(0.0f, 0.0f, 0.0f),
-          m_rotation(0.0f, 0.0f, 0.0f, 1.0f) {
-        internal::zerofill(m_name, sizeof(m_name));
-        internal::zerofill(m_linear, sizeof(m_linear));
-        internal::zerofill(m_interpolationTable, sizeof(m_interpolationTable));
-    }
-    ~BoneKeyFrame() {
-        m_position.setZero();
-        m_rotation.setValue(0.0f, 0.0f, 0.0f, 1.0f);
-        for (int i = 0; i < 4; i++)
-            delete[] m_interpolationTable[i];
-        internal::zerofill(m_name, sizeof(m_name));
-        internal::zerofill(m_linear, sizeof(m_linear));
-        internal::zerofill(m_interpolationTable, sizeof(m_interpolationTable));
-    }
+    FaceKeyFrame();
+    ~FaceKeyFrame();
 
     static const int kNameSize = 15;
-    static const int kTableSize = 64;
 
-    static size_t stride() {
-        return kNameSize + sizeof(uint32_t) + sizeof(float) * 7 + 64;
-    }
+    static size_t stride();
 
-    void read(const uint8_t *data) {
-        uint8_t *ptr = const_cast<uint8_t *>(data);
-        copyBytesSafe(m_name, ptr, sizeof(m_name));
-        ptr += sizeof(m_name);
-        uint32_t index = *reinterpret_cast<uint32_t *>(ptr);
-        ptr += sizeof(uint32_t);
-        float pos[3], rot[4];
-        internal::vector3(ptr, pos);
-        internal::vector4(ptr, rot);
-        int8_t table[64];
-        memcpy(table, ptr, sizeof(table));
-        data += sizeof(table);
-
-        m_frameIndex = static_cast<float>(index);
-#ifdef VPVL_COORDINATE_OPENGL
-        m_position.setValue(pos[0], pos[1], -pos[2]);
-        m_rotation.setValue(-rot[0], -rot[1], rot[2], rot[3]);
-#else
-        m_position.setValue(pos[0], pos[1], pos[2]);
-        m_rotation.setValue(rot[0], rot[1], rot[2], rot[3]);
-#endif
-        setInterpolationTable(table);
-    }
+    void read(const uint8_t *data);
+    void write(uint8_t *data);
 
     const uint8_t *name() const {
         return m_name;
@@ -108,45 +67,26 @@ public:
     float frameIndex() const {
         return m_frameIndex;
     }
-    const btVector3 &position() const {
-        return m_position;
+    float weight() const {
+        return m_weight;
     }
-    const btQuaternion &rotation() const {
-        return m_rotation;
+
+    void setName(const uint8_t *value) {
+        copyBytesSafe(m_name, value, sizeof(m_name));
     }
-    const bool *linear() const {
-        return m_linear;
+    void setFrameIndex(float value) {
+        m_frameIndex = value;
     }
-    const float *const *interpolationTable() const {
-        return m_interpolationTable;
+    void setWeight(float value) {
+        m_weight = value;
     }
 
 private:
-    void setInterpolationTable(const int8_t *table) {
-        for (int i = 0; i < 4; i++)
-            m_linear[i] = (table[0 + i] == table[4 + i] && table[8 + i] == table[12 + i]) ? true : false;
-        for (int i = 0; i < 4; i++) {
-            if (m_linear[i]) {
-                m_interpolationTable[i] = 0;
-                continue;
-            }
-            m_interpolationTable[i] = new float[kTableSize + 1];
-            float x1 = table[i]      / 127.0f;
-            float y1 = table[i +  4] / 127.0f;
-            float x2 = table[i +  8] / 127.0f;
-            float y2 = table[i + 12] / 127.0f;
-            internal::buildInterpolationTable(x1, x2, y1, y2, kTableSize, m_interpolationTable[i]);
-        }
-    }
-
     uint8_t m_name[kNameSize];
     float m_frameIndex;
-    btVector3 m_position;
-    btQuaternion m_rotation;
-    bool m_linear[4];
-    float *m_interpolationTable[4];
+    float m_weight;
 
-    VPVL_DISABLE_COPY_AND_ASSIGN(BoneKeyFrame)
+    VPVL_DISABLE_COPY_AND_ASSIGN(FaceKeyFrame)
 };
 
 }

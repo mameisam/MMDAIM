@@ -1,6 +1,8 @@
 /* ----------------------------------------------------------------- */
 /*                                                                   */
-/*  Copyright (c) 2010-2011  hkrn                                    */
+/*  Copyright (c) 2009-2011  Nagoya Institute of Technology          */
+/*                           Department of Computer Science          */
+/*                2010-2011  hkrn                                    */
 /*                                                                   */
 /* All rights reserved.                                              */
 /*                                                                   */
@@ -34,28 +36,79 @@
 /* POSSIBILITY OF SUCH DAMAGE.                                       */
 /* ----------------------------------------------------------------- */
 
-#ifndef vpvl_vpvl_H_
-#define vpvl_vpvl_H_
+#ifndef VPVL_BONEKEYFRAME_H_
+#define VPVL_BONEKEYFRAME_H_
 
+#include <LinearMath/btAlignedObjectArray.h>
+#include <LinearMath/btQuaternion.h>
+#include <LinearMath/btVector3.h>
 #include "vpvl/common.h"
-#include "vpvl/BaseMotion.h"
-#include "vpvl/Bone.h"
-#include "vpvl/BoneKeyFrame.h"
-#include "vpvl/BoneMotion.h"
-#include "vpvl/CameraKeyFrame.h"
-#include "vpvl/CameraMotion.h"
-#include "vpvl/Constraint.h"
-#include "vpvl/Face.h"
-#include "vpvl/FaceKeyFrame.h"
-#include "vpvl/FaceMotion.h"
-#include "vpvl/IK.h"
-#include "vpvl/Material.h"
-#include "vpvl/PMDModel.h"
-#include "vpvl/RigidBody.h"
-#include "vpvl/Scene.h"
-#include "vpvl/Vertex.h"
-#include "vpvl/VMDMotion.h"
-#include "vpvl/VPDPose.h"
-#include "vpvl/XModel.h"
+#include "vpvl/internal/util.h"
 
-#endif /* vpvl_vpvl_H_ */
+namespace vpvl
+{
+
+class Bone;
+
+class BoneKeyFrame
+{
+public:
+    BoneKeyFrame();
+    ~BoneKeyFrame();
+
+    static const int kNameSize = 15;
+    static const int kTableSize = 64;
+
+    static size_t stride();
+
+    void read(const uint8_t *data);
+    void write(uint8_t *data);
+
+    const uint8_t *name() const {
+        return m_name;
+    }
+    float frameIndex() const {
+        return m_frameIndex;
+    }
+    const btVector3 &position() const {
+        return m_position;
+    }
+    const btQuaternion &rotation() const {
+        return m_rotation;
+    }
+    const bool *linear() const {
+        return m_linear;
+    }
+    const float *const *interpolationTable() const {
+        return m_interpolationTable;
+    }
+
+    void setName(const uint8_t *value) {
+        copyBytesSafe(m_name, value, sizeof(m_name));
+    }
+    void setFrameIndex(float value) {
+        m_frameIndex = value;
+    }
+    void setPosition(const btVector3 &value) {
+        m_position = value;
+    }
+    void setRotation(const btQuaternion &value) {
+        m_rotation = value;
+    }
+
+private:
+    void setInterpolationTable(const int8_t *table);
+
+    uint8_t m_name[kNameSize];
+    float m_frameIndex;
+    btVector3 m_position;
+    btQuaternion m_rotation;
+    bool m_linear[4];
+    float *m_interpolationTable[4];
+
+    VPVL_DISABLE_COPY_AND_ASSIGN(BoneKeyFrame)
+};
+
+}
+
+#endif
