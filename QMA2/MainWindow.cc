@@ -1,11 +1,15 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
+#include "CameraPerspectiveWidget.h"
+#include "FaceWidget.h"
+#include "TabWidget.h"
 #include "TimelineWidget.h"
 #include "TransformWidget.h"
 
 #include <QtGui/QtGui>
 #include <vpvl/vpvl.h>
+#include "util.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -19,11 +23,15 @@ MainWindow::MainWindow(QWidget *parent) :
     m_distance(0.0f),
     m_currentFPS(0)
 {
+    m_tabWidget = new TabWidget(&m_settings);
+    m_timelineWidget = new TimelineWidget(&m_settings);
+    m_transformWidget = new TransformWidget(&m_settings);
     ui->setupUi(this);
     ui->scene->setSettings(&m_settings);
-    ui->menuView->addAction(ui->dockTimelineWidget->toggleViewAction());
-    ui->menuView->addAction(ui->dockFaceWidget->toggleViewAction());
-    ui->menuView->addAction(ui->dockTransformWidget->toggleViewAction());
+    /* for QMenu limitation see http://doc.qt.nokia.com/latest/mac-differences.html#menu-actions */
+#ifdef Q_OS_MACX
+    ui->menuBar->setParent(0);
+#endif
     connectWidgets();
     restoreGeometry(m_settings.value("mainWindow/geometry").toByteArray());
     restoreState(m_settings.value("mainWindow/state").toByteArray());
@@ -31,6 +39,13 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
+    delete m_tabWidget;
+    delete m_timelineWidget;
+    delete m_transformWidget;
+    /* for QMenu limitation see http://doc.qt.nokia.com/latest/mac-differences.html#menu-actions */
+#ifdef Q_OS_MACX
+    delete ui->menuBar;
+#endif
     delete ui;
 }
 
@@ -57,7 +72,7 @@ void MainWindow::revertSelectedModel()
 
 void MainWindow::addModel(vpvl::PMDModel *model)
 {
-    QString name = SceneWidget::toUnicodeModelName(model);
+    QString name = internal::toQString(model);
     QAction *action = new QAction(name, this);
     action->setStatusTip(tr("Select a model %1").arg(name));
     connect(action, SIGNAL(triggered()), this, SLOT(selectModel()));
@@ -67,7 +82,7 @@ void MainWindow::addModel(vpvl::PMDModel *model)
 void MainWindow::deleteModel(vpvl::PMDModel *model)
 {
     QAction *actionToRemove = 0;
-    QString name = SceneWidget::toUnicodeModelName(model);
+    QString name = internal::toQString(model);
     foreach (QAction *action, ui->menuSelectModel->actions()) {
         if (action->text() == name) {
             actionToRemove = action;
@@ -119,19 +134,40 @@ void MainWindow::connectWidgets()
     connect(ui->scene, SIGNAL(modelDidDelete(vpvl::PMDModel*)),
             this, SLOT(deleteModel(vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
-            ui->timeline, SLOT(setModel(vpvl::PMDModel*)));
+            m_timelineWidget, SLOT(setModel(vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
-            ui->face, SLOT(setModel(vpvl::PMDModel*)));
+            m_tabWidget->faceWidget(), SLOT(setModel(vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
-            ui->transform, SLOT(setModel(vpvl::PMDModel*)));
+            m_transformWidget, SLOT(setModel(vpvl::PMDModel*)));
+    connect(ui->scene, SIGNAL(motionDidAdd(vpvl::VMDMotion*,vpvl::PMDModel*)),
+            m_timelineWidget, SLOT(setMotion(vpvl::VMDMotion*,vpvl::PMDModel*)));
+    connect(ui->scene, SIGNAL(modelDidMakePose(vpvl::VPDPose*,vpvl::PMDModel*)),
+            m_timelineWidget, SLOT(setPose(vpvl::VPDPose*,vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(fpsDidUpdate(int)),
             this, SLOT(setCurrentFPS(int)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
             this, SLOT(setModel(vpvl::PMDModel*)));
-    connect(ui->timeline, SIGNAL(boneDidSelect(vpvl::Bone*)),
+    connect(m_timelineWidget, SIGNAL(boneDidSelect(vpvl::Bone*)),
             this, SLOT(setBone(vpvl::Bone*)));
     connect(ui->scene, SIGNAL(cameraPerspectiveDidSet(btVector3,btVector3,float,float)),
             this, SLOT(setCameraPerspective(btVector3,btVector3,float,float)));
+    connect(m_tabWidget->cameraPerspectiveWidget(), SIGNAL(cameraPerspectiveDidChange(btVector3*,btVector3*,float*,float*)),
+            ui->scene, SLOT(setCameraPerspective(btVector3*,btVector3*,float*,float*)));
+    connect(m_transformWidget, SIGNAL(boneDidRegister(vpvl::Bone*)),
+            m_timelineWidget, SLOT(registerBone(vpvl::Bone*)));
+    connect(m_transformWidget, SIGNAL(faceDidRegister(vpvl::Face*)),
+            m_timelineWidget, SLOT(registerFace(vpvl::Face*)));
+    connect(m_tabWidget->faceWidget(), SIGNAL(faceDidRegister(vpvl::Face*)),
+            m_timelineWidget, SLOT(registerFace(vpvl::Face*)));
+}
+
+void MainWindow::on_actionAbout_triggered()
+{
+}
+
+void MainWindow::on_actionAboutQt_triggered()
+{
+    qApp->aboutQt();
 }
 
 void MainWindow::on_actionAddModel_triggered()
@@ -229,17 +265,47 @@ void MainWindow::on_actionDeleteSelectedModel_triggered()
     ui->scene->deleteSelectedModel();
 }
 
-void MainWindow::on_actionAbout_triggered()
-{
-}
-
-void MainWindow::on_actionAboutQt_triggered()
-{
-    qApp->aboutQt();
-}
-
-
 void MainWindow::on_actionSetModelPose_triggered()
 {
     ui->scene->setModelPose();
+}
+
+void MainWindow::on_actionBoneXCoordinateZero_triggered()
+{
+    m_transformWidget->resetBone(TransformWidget::kX);
+}
+
+void MainWindow::on_actionBoneYCoordinateZero_triggered()
+{
+    m_transformWidget->resetBone(TransformWidget::kY);
+}
+
+void MainWindow::on_actionBoneZCoordinateZero_triggered()
+{
+    m_transformWidget->resetBone(TransformWidget::kZ);
+}
+
+void MainWindow::on_actionBoneRotationZero_triggered()
+{
+    m_transformWidget->resetBone(TransformWidget::kRotation);
+}
+
+void MainWindow::on_actionBoneResetAll_triggered()
+{
+    ui->scene->resetAllBones();
+}
+
+void MainWindow::on_actionTimeline_triggered()
+{
+    m_timelineWidget->setVisible(true);
+}
+
+void MainWindow::on_actionTransform_triggered()
+{
+    m_transformWidget->setVisible(true);
+}
+
+void MainWindow::on_actionTabs_triggered()
+{
+    m_tabWidget->setVisible(true);
 }

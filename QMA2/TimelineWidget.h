@@ -6,29 +6,46 @@
 
 namespace vpvl {
 class Bone;
+class Face;
 class PMDModel;
+class VMDMotion;
+class VPDPose;
+}
+
+namespace internal {
+class TimelineTableModel;
 }
 
 class QTableView;
-class TableModel;
+class QSettings;
 
 class TimelineWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TimelineWidget(QWidget *parent = 0);
+    explicit TimelineWidget(QSettings *settings, QWidget *parent = 0);
     ~TimelineWidget();
 
 public slots:
+    void registerBone(vpvl::Bone *bone);
+    void registerFace(vpvl::Face *face);
     void setModel(vpvl::PMDModel *value);
     void selectCell(QModelIndex modelIndex);
+    void setMotion(vpvl::VMDMotion *motion, vpvl::PMDModel *model);
+    void setPose(vpvl::VPDPose *pose, vpvl::PMDModel *model);
 
 signals:
     void boneDidSelect(vpvl::Bone *bone);
+    void faceDidSelect(vpvl::Face *face);
+    void frameIndexSeeked(int frameIndex);
+
+protected:
+    void closeEvent(QCloseEvent *event);
 
 private:
+    QSettings *m_settings;
     QTableView *m_tableView;
-    TableModel *m_tableModel;
+    internal::TimelineTableModel *m_tableModel;
     vpvl::PMDModel *m_selectedModel;
 };
 

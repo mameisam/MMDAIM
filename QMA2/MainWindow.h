@@ -3,6 +3,7 @@
 
 #include <QtCore/QSettings>
 #include <QtGui/QMainWindow>
+#include <QtGui/QMenuBar>
 #include <LinearMath/btVector3.h>
 
 namespace vpvl {
@@ -13,6 +14,10 @@ class PMDModel;
 namespace Ui {
 class MainWindow;
 }
+
+class TabWidget;
+class TimelineWidget;
+class TransformWidget;
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +40,8 @@ private slots:
     void setBone(vpvl::Bone *value);
     void setCameraPerspective(const btVector3 &pos, const btVector3 &angle, float fovy, float distance);
 
+    void on_actionAbout_triggered();
+    void on_actionAboutQt_triggered();
     void on_actionAddModel_triggered();
     void on_actionAddAsset_triggered();
     void on_actionInsertToAllModels_triggered();
@@ -54,16 +61,25 @@ private slots:
     void on_actionResetCamera_triggered();
     void on_actionRevertSelectedModel_triggered();
     void on_actionDeleteSelectedModel_triggered();
-    void on_actionAbout_triggered();
-    void on_actionAboutQt_triggered();
-
     void on_actionSetModelPose_triggered();
+    void on_actionBoneXCoordinateZero_triggered();
+    void on_actionBoneYCoordinateZero_triggered();
+    void on_actionBoneZCoordinateZero_triggered();
+    void on_actionBoneRotationZero_triggered();
+    void on_actionBoneResetAll_triggered();
+    void on_actionTimeline_triggered();
+    void on_actionTransform_triggered();
+
+    void on_actionTabs_triggered();
 
 private:
     void connectWidgets();
     void updateInformation();
     Ui::MainWindow *ui;
     QSettings m_settings;
+    TabWidget *m_tabWidget;
+    TimelineWidget *m_timelineWidget;
+    TransformWidget *m_transformWidget;
 
     vpvl::PMDModel *m_model;
     vpvl::Bone *m_bone;

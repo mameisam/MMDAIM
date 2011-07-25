@@ -104,7 +104,7 @@ typedef struct PMDModelUserData PMDModelUserData;
  * PMDModel class represents a Polygon Model Data object, 3D model object.
  */
 
-class PMDModel
+class VPVL_EXPORT PMDModel
 {
 public:
 
@@ -320,6 +320,7 @@ private:
     void parseConstraints(const PMDModelDataInfo &info);
     void prepare();
     void release();
+    void sortBones();
     void updateAllBones();
     void updateBoneFromSimulation();
     void updateAllFaces();
@@ -351,6 +352,7 @@ private:
     btAlignedObjectArray<btVector3> m_toonTextureCoords;
     btAlignedObjectArray<btVector3> m_shadowTextureCoords;
     BoneList m_rotatedBones;
+    Bone **m_orderedBones;
     btAlignedObjectArray<bool> m_isIKSimulated;
     SkinVertex *m_skinnedVertices;
     ::btDiscreteDynamicsWorld *m_world;
