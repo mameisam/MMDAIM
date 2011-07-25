@@ -81,70 +81,59 @@
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
-     <string>Help</string>
+     <string>&amp;Help</string>
     </property>
     <addaction name="actionAbout"/>
     <addaction name="actionAboutQt"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
-     <string>View</string>
+     <string>&amp;View</string>
     </property>
+    <addaction name="actionTabs"/>
+    <addaction name="actionTimeline"/>
+    <addaction name="actionTransform"/>
+   </widget>
+   <widget class="QMenu" name="menuBone">
+    <property name="title">
+     <string>&amp;Bone</string>
+    </property>
+    <addaction name="actionBoneXCoordinateZero"/>
+    <addaction name="actionBoneYCoordinateZero"/>
+    <addaction name="actionBoneZCoordinateZero"/>
+    <addaction name="actionBoneRotationZero"/>
+    <addaction name="actionBoneResetAll"/>
+    <addaction name="separator"/>
+    <addaction name="actionDirect_coordinate_input"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuScene"/>
    <addaction name="menuModel"/>
+   <addaction name="menuBone"/>
    <addaction name="menuView"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <widget class="QDockWidget" name="dockTimelineWidget">
-   <property name="floating">
-    <bool>false</bool>
-   </property>
-   <property name="windowTitle">
-    <string>Timeline</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>8</number>
-   </attribute>
-   <widget class="TimelineWidget" name="timeline"/>
-  </widget>
-  <widget class="QDockWidget" name="dockFaceWidget">
-   <property name="floating">
-    <bool>true</bool>
-   </property>
-   <property name="windowTitle">
-    <string>Face</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>1</number>
-   </attribute>
-   <widget class="FaceWidget" name="face"/>
-  </widget>
-  <widget class="QDockWidget" name="dockTransformWidget">
-   <property name="floating">
-    <bool>true</bool>
-   </property>
-   <property name="windowTitle">
-    <string>Transform</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>1</number>
-   </attribute>
-   <widget class="TransformWidget" name="transform"/>
-  </widget>
   <action name="actionAddModel">
    <property name="text">
     <string>Add model</string>
+   </property>
+   <property name="statusTip">
+    <string>Add a model to the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+M</string>
    </property>
   </action>
   <action name="actionAddAsset">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Add asset</string>
+   </property>
+   <property name="statusTip">
+    <string>Add an asset to the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+A</string>
@@ -154,6 +143,9 @@
    <property name="text">
     <string>Insert to all models</string>
    </property>
+   <property name="statusTip">
+    <string>Insert a motion to the all models.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+Shift+V</string>
    </property>
@@ -161,6 +153,9 @@
   <action name="actionInsertToSelectedModel">
    <property name="text">
     <string>Insert to selected model</string>
+   </property>
+   <property name="statusTip">
+    <string>Insert a motion to the selected model.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+Shift+V</string>
@@ -170,6 +165,9 @@
    <property name="text">
     <string>Set camera</string>
    </property>
+   <property name="statusTip">
+    <string>Set camera motion to the scene.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+Shift+C</string>
    </property>
@@ -177,6 +175,9 @@
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+   <property name="statusTip">
+    <string>Exit this application.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
@@ -189,6 +190,9 @@
    <property name="text">
     <string>Zoom in</string>
    </property>
+   <property name="statusTip">
+    <string>Zoom in the scene.</string>
+   </property>
    <property name="shortcut">
     <string>+</string>
    </property>
@@ -196,6 +200,9 @@
   <action name="actionZoomOut">
    <property name="text">
     <string>Zoom out</string>
+   </property>
+   <property name="statusTip">
+    <string>Zoom out the scene.</string>
    </property>
    <property name="shortcut">
     <string>-</string>
@@ -205,6 +212,9 @@
    <property name="text">
     <string>Rotate up</string>
    </property>
+   <property name="statusTip">
+    <string>Rotate up the scene.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+Up</string>
    </property>
@@ -212,6 +222,9 @@
   <action name="actionRotateDown">
    <property name="text">
     <string>Rotate down</string>
+   </property>
+   <property name="statusTip">
+    <string>Rotate down the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Down</string>
@@ -221,6 +234,9 @@
    <property name="text">
     <string>Rotate left</string>
    </property>
+   <property name="statusTip">
+    <string>Rotate left the scene.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+Left</string>
    </property>
@@ -228,6 +244,9 @@
   <action name="actionRotateRight">
    <property name="text">
     <string>Rotate right</string>
+   </property>
+   <property name="statusTip">
+    <string>Rotate right the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Right</string>
@@ -237,6 +256,9 @@
    <property name="text">
     <string>Translate up</string>
    </property>
+   <property name="statusTip">
+    <string>Translate up the scene.</string>
+   </property>
    <property name="shortcut">
     <string>Shift+Up</string>
    </property>
@@ -244,6 +266,9 @@
   <action name="actionTranslateDown">
    <property name="text">
     <string>Translate down</string>
+   </property>
+   <property name="statusTip">
+    <string>Translate down the scene.</string>
    </property>
    <property name="shortcut">
     <string>Shift+Down</string>
@@ -253,6 +278,9 @@
    <property name="text">
     <string>Translate left</string>
    </property>
+   <property name="statusTip">
+    <string>Translate left the scene.</string>
+   </property>
    <property name="shortcut">
     <string>Shift+Left</string>
    </property>
@@ -260,6 +288,9 @@
   <action name="actionTranslateRight">
    <property name="text">
     <string>Translate right</string>
+   </property>
+   <property name="statusTip">
+    <string>Translate right the scene.</string>
    </property>
    <property name="shortcut">
     <string>Shift+Right</string>
@@ -269,15 +300,24 @@
    <property name="text">
     <string>Reset camera</string>
    </property>
+   <property name="statusTip">
+    <string>Reset camera perspective.</string>
+   </property>
   </action>
   <action name="actionRevertSelectedModel">
    <property name="text">
     <string>Revert selected model</string>
    </property>
+   <property name="statusTip">
+    <string>Revert the selected model.</string>
+   </property>
   </action>
   <action name="actionDeleteSelectedModel">
    <property name="text">
     <string>Delete selected model</string>
+   </property>
+   <property name="statusTip">
+    <string>Delete the selected model from the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+Backspace</string>
@@ -286,6 +326,9 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+   <property name="statusTip">
+    <string>About this application.</string>
    </property>
    <property name="shortcut">
     <string>Alt+Q, Alt+/</string>
@@ -298,6 +341,9 @@
    <property name="text">
     <string>About Qt</string>
    </property>
+   <property name="statusTip">
+    <string>About Qt.</string>
+   </property>
    <property name="menuRole">
     <enum>QAction::AboutQtRole</enum>
    </property>
@@ -306,8 +352,110 @@
    <property name="text">
     <string>Set model pose</string>
    </property>
+   <property name="statusTip">
+    <string>Set a model pose to the selected model.</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+Shift+P</string>
+   </property>
+  </action>
+  <action name="actionBoneXCoordinateZero">
+   <property name="text">
+    <string>Make X axis of bone zero</string>
+   </property>
+   <property name="statusTip">
+    <string>Reset X axis of the selected bone to the selected model.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+R, X</string>
+   </property>
+  </action>
+  <action name="actionBoneYCoordinateZero">
+   <property name="text">
+    <string>Make Y axis of bone zero</string>
+   </property>
+   <property name="statusTip">
+    <string>Reset Y axis of the selected bone to the selected model.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+R, Y</string>
+   </property>
+  </action>
+  <action name="actionBoneZCoordinateZero">
+   <property name="text">
+    <string>Make Z axis of bone zero</string>
+   </property>
+   <property name="statusTip">
+    <string>Reset Z axis of the selected bone to the selected model.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+R, Z</string>
+   </property>
+  </action>
+  <action name="actionBoneRotationZero">
+   <property name="text">
+    <string>Make rotation of bone zero</string>
+   </property>
+   <property name="statusTip">
+    <string>Reset rotation of the selected bone to the selected model.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+R, R</string>
+   </property>
+  </action>
+  <action name="actionDirect_coordinate_input">
+   <property name="text">
+    <string>Open direct coordinate dialog</string>
+   </property>
+   <property name="statusTip">
+    <string>Open direct coordinate dialog.</string>
+   </property>
+  </action>
+  <action name="actionBoneResetAll">
+   <property name="text">
+    <string>Reset all bone's position and rotation</string>
+   </property>
+   <property name="statusTip">
+    <string>Reset all bone's position and rotation to the selected model.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Alt+R, A</string>
+   </property>
+  </action>
+  <action name="actionTimeline">
+   <property name="text">
+    <string>Timeline</string>
+   </property>
+   <property name="toolTip">
+    <string>Show timeline view</string>
+   </property>
+   <property name="statusTip">
+    <string>Make the timeline view visible.</string>
+   </property>
+   <property name="whatsThis">
+    <string/>
+   </property>
+  </action>
+  <action name="actionTransform">
+   <property name="text">
+    <string>Transform</string>
+   </property>
+   <property name="toolTip">
+    <string>Show transform view</string>
+   </property>
+   <property name="statusTip">
+    <string>Make the transform view visible.</string>
+   </property>
+  </action>
+  <action name="actionTabs">
+   <property name="text">
+    <string>Tabs</string>
+   </property>
+   <property name="toolTip">
+    <string>Show tab view</string>
+   </property>
+   <property name="statusTip">
+    <string>Make tab view visible.</string>
    </property>
   </action>
  </widget>
@@ -318,24 +466,10 @@
    <extends>QWidget</extends>
    <header>SceneWidget.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>TimelineWidget</class>
-   <extends>QWidget</extends>
-   <header>TimelineWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>FaceWidget</class>
-   <extends>QWidget</extends>
-   <header>FaceWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>TransformWidget</class>
-   <extends>QWidget</extends>
-   <header>TransformWidget.h</header>
-   <container>1</container>
+   <slots>
+    <slot>addModel()</slot>
+    <slot>removeModel()</slot>
+   </slots>
   </customwidget>
  </customwidgets>
  <resources/>

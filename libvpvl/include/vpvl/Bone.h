@@ -61,7 +61,7 @@ typedef btAlignedObjectArray<Bone*> BoneList;
  * Bone class represents a bone of a Polygon Model Data object.
  */
 
-class Bone
+class VPVL_EXPORT Bone
 {
 public:
 
@@ -196,6 +196,15 @@ public:
     }
 
     /**
+     * Get the bone ID of this.
+     *
+     * @return bone ID
+     */
+    int16_t id() const {
+        return m_id;
+    }
+
+    /**
      * Get the parent bone of this.
      *
      * @return parent bone
@@ -295,6 +304,15 @@ public:
     }
 
     /**
+     * Get the bone has parent.
+     *
+     * @return true if the bone has parent
+     */
+    bool hasParent() const {
+        return m_hasParent;
+    }
+
+    /**
      * Set the name of the bone.
      *
      * @param the name of the bone
@@ -365,7 +383,8 @@ public:
     bool isMovable() const {
         switch (m_type) {
         case kRotateAndMove:
-        case kIKTarget:
+        case kIKDestination:
+        case kUnderIK:
             return true;
         default:
             return false;
@@ -378,20 +397,30 @@ public:
      * @return true if bone is rotateable
      */
     bool isRotateable() const {
+        return isVisible();
+    }
+
+    /**
+     * Get whether bone is visible
+     *
+     * @return true if bone is visible
+     */
+    bool isVisible() const {
         switch (m_type) {
-        case kRotate:
-        case kRotateAndMove:
-        case kUnderRotate:
+        case kUnknown:
         case kIKTarget:
-            return true;
-        default:
+        case kInvisible:
+        case kFollowRotate:
             return false;
+        default:
+            return true;
         }
     }
 
 private:
     uint8_t m_name[kNameSize];
     uint8_t m_englishName[kNameSize];
+    int16_t m_id;
     Type m_type;
     btTransform m_transform;
     btTransform m_transformMoveToOrigin;
@@ -404,6 +433,7 @@ private:
     Bone *m_childBone;
     Bone *m_targetBone;
     int16_t m_targetBoneID;
+    bool m_hasParent;
     bool m_parentIsRoot;
     bool m_constraintedXCoordinateForIK;
     bool m_simulated;
