@@ -62,8 +62,8 @@ public:
         : m_transform(transform) {
     }
     bool operator()(const PMDModel *left, const PMDModel *right) {
-        const btVector3 positionLeft = m_transform * Bone::centerBone(&left->bones())->transform().getOrigin();
-        const btVector3 positionRight = m_transform * Bone::centerBone(&right->bones())->transform().getOrigin();
+        const btVector3 positionLeft = m_transform * Bone::centerBone(&left->bones())->localTransform().getOrigin();
+        const btVector3 positionRight = m_transform * Bone::centerBone(&right->bones())->localTransform().getOrigin();
         return positionLeft.z() < positionRight.z();
     }
 private:
@@ -159,6 +159,29 @@ void Scene::removeModel(PMDModel *model)
 void Scene::resetCamera()
 {
     setCameraPerspective(btVector3(0.0f, 10.0f, 0.0f), btVector3(0.0f, 0.0f, 0.0f), 16.0f, 100.0f);
+}
+
+void Scene::seek(float frameIndex)
+{
+    sortRenderingOrder();
+    const uint32_t nModels = m_models.size();
+    // Updating model
+    for (uint32_t i = 0; i < nModels; i++) {
+        PMDModel *model = m_models[i];
+        model->updateRootBone();
+        model->seekMotion(frameIndex);
+        model->updateSkins();
+    }
+    // Updating camera motion
+    if (m_cameraMotion) {
+        CameraMotion *camera = m_cameraMotion->mutableCamera();
+        camera->seek(frameIndex);
+        m_position = camera->position();
+        m_angle = camera->angle();
+        m_distance = camera->distance();
+        m_fovy = camera->fovy();
+        updateRotationFromAngle();
+    }
 }
 
 void Scene::setCameraPerspective(const btVector3 &position, const btVector3 &angle, float fovy, float distance)

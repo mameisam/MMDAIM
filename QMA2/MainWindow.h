@@ -15,6 +15,8 @@ namespace Ui {
 class MainWindow;
 }
 
+class BoneMotionModel;
+class FaceMotionModel;
 class TabWidget;
 class TimelineWidget;
 class TransformWidget;
@@ -62,15 +64,15 @@ private slots:
     void on_actionRevertSelectedModel_triggered();
     void on_actionDeleteSelectedModel_triggered();
     void on_actionSetModelPose_triggered();
-    void on_actionBoneXCoordinateZero_triggered();
-    void on_actionBoneYCoordinateZero_triggered();
-    void on_actionBoneZCoordinateZero_triggered();
+    void on_actionBoneXPositionZero_triggered();
+    void on_actionBoneYPositionZero_triggered();
+    void on_actionBoneZPositionZero_triggered();
     void on_actionBoneRotationZero_triggered();
     void on_actionBoneResetAll_triggered();
     void on_actionTimeline_triggered();
     void on_actionTransform_triggered();
-
     void on_actionTabs_triggered();
+    void on_actionBoneDialog_triggered();
 
 private:
     void connectWidgets();
@@ -80,6 +82,8 @@ private:
     TabWidget *m_tabWidget;
     TimelineWidget *m_timelineWidget;
     TransformWidget *m_transformWidget;
+    BoneMotionModel *m_boneMotionModel;
+    FaceMotionModel *m_faceMotionModel;
 
     vpvl::PMDModel *m_model;
     vpvl::Bone *m_bone;

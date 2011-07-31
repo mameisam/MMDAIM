@@ -1,7 +1,10 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
+#include "BoneDialog.h"
+#include "BoneMotionModel.h"
 #include "CameraPerspectiveWidget.h"
+#include "FaceMotionModel.h"
 #include "FaceWidget.h"
 #include "TabWidget.h"
 #include "TimelineWidget.h"
@@ -23,9 +26,11 @@ MainWindow::MainWindow(QWidget *parent) :
     m_distance(0.0f),
     m_currentFPS(0)
 {
+    m_boneMotionModel = new BoneMotionModel(this);
+    m_faceMotionModel = new FaceMotionModel(this);
     m_tabWidget = new TabWidget(&m_settings);
-    m_timelineWidget = new TimelineWidget(&m_settings);
-    m_transformWidget = new TransformWidget(&m_settings);
+    m_timelineWidget = new TimelineWidget(&m_settings, m_boneMotionModel, m_faceMotionModel);
+    m_transformWidget = new TransformWidget(&m_settings, m_boneMotionModel, m_faceMotionModel);
     ui->setupUi(this);
     ui->scene->setSettings(&m_settings);
     /* for QMenu limitation see http://doc.qt.nokia.com/latest/mac-differences.html#menu-actions */
@@ -134,31 +139,27 @@ void MainWindow::connectWidgets()
     connect(ui->scene, SIGNAL(modelDidDelete(vpvl::PMDModel*)),
             this, SLOT(deleteModel(vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
-            m_timelineWidget, SLOT(setModel(vpvl::PMDModel*)));
+            m_boneMotionModel, SLOT(setPMDModel(vpvl::PMDModel*)));
+    connect(ui->scene, SIGNAL(motionDidAdd(vpvl::VMDMotion*,vpvl::PMDModel*)),
+            m_boneMotionModel,SLOT(loadMotion(vpvl::VMDMotion*,vpvl::PMDModel*)));
+    connect(m_transformWidget, SIGNAL(boneDidRegister(vpvl::Bone*)),
+            m_timelineWidget, SLOT(registerKeyFrame(vpvl::Bone*)));
+    connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
+            m_faceMotionModel, SLOT(setPMDModel(vpvl::PMDModel*)));
+    connect(ui->scene, SIGNAL(motionDidAdd(vpvl::VMDMotion*,vpvl::PMDModel*)),
+            m_faceMotionModel, SLOT(loadMotion(vpvl::VMDMotion*,vpvl::PMDModel*)));
+    connect(m_transformWidget, SIGNAL(faceDidRegister(vpvl::Face*)),
+            m_timelineWidget, SLOT(registerKeyFrame(vpvl::Face*)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
             m_tabWidget->faceWidget(), SLOT(setModel(vpvl::PMDModel*)));
-    connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
-            m_transformWidget, SLOT(setModel(vpvl::PMDModel*)));
-    connect(ui->scene, SIGNAL(motionDidAdd(vpvl::VMDMotion*,vpvl::PMDModel*)),
-            m_timelineWidget, SLOT(setMotion(vpvl::VMDMotion*,vpvl::PMDModel*)));
-    connect(ui->scene, SIGNAL(modelDidMakePose(vpvl::VPDPose*,vpvl::PMDModel*)),
-            m_timelineWidget, SLOT(setPose(vpvl::VPDPose*,vpvl::PMDModel*)));
     connect(ui->scene, SIGNAL(fpsDidUpdate(int)),
             this, SLOT(setCurrentFPS(int)));
     connect(ui->scene, SIGNAL(modelDidSelect(vpvl::PMDModel*)),
             this, SLOT(setModel(vpvl::PMDModel*)));
-    connect(m_timelineWidget, SIGNAL(boneDidSelect(vpvl::Bone*)),
-            this, SLOT(setBone(vpvl::Bone*)));
     connect(ui->scene, SIGNAL(cameraPerspectiveDidSet(btVector3,btVector3,float,float)),
             this, SLOT(setCameraPerspective(btVector3,btVector3,float,float)));
     connect(m_tabWidget->cameraPerspectiveWidget(), SIGNAL(cameraPerspectiveDidChange(btVector3*,btVector3*,float*,float*)),
             ui->scene, SLOT(setCameraPerspective(btVector3*,btVector3*,float*,float*)));
-    connect(m_transformWidget, SIGNAL(boneDidRegister(vpvl::Bone*)),
-            m_timelineWidget, SLOT(registerBone(vpvl::Bone*)));
-    connect(m_transformWidget, SIGNAL(faceDidRegister(vpvl::Face*)),
-            m_timelineWidget, SLOT(registerFace(vpvl::Face*)));
-    connect(m_tabWidget->faceWidget(), SIGNAL(faceDidRegister(vpvl::Face*)),
-            m_timelineWidget, SLOT(registerFace(vpvl::Face*)));
 }
 
 void MainWindow::on_actionAbout_triggered()
@@ -270,29 +271,38 @@ void MainWindow::on_actionSetModelPose_triggered()
     ui->scene->setModelPose();
 }
 
-void MainWindow::on_actionBoneXCoordinateZero_triggered()
+void MainWindow::on_actionBoneXPositionZero_triggered()
 {
-    m_transformWidget->resetBone(TransformWidget::kX);
+    if (!m_boneMotionModel->resetBone(BoneMotionModel::kX))
+        QMessageBox::warning(this, tr("The model or the bone is not selected."),
+                             tr("Select a model or a bone to reset X position of the bone"));
 }
 
-void MainWindow::on_actionBoneYCoordinateZero_triggered()
+void MainWindow::on_actionBoneYPositionZero_triggered()
 {
-    m_transformWidget->resetBone(TransformWidget::kY);
+    if (!m_boneMotionModel->resetBone(BoneMotionModel::kY))
+        QMessageBox::warning(this, tr("The model or the bone is not selected."),
+                             tr("Select a model or a bone to reset Y position of the bone"));
 }
 
-void MainWindow::on_actionBoneZCoordinateZero_triggered()
+void MainWindow::on_actionBoneZPositionZero_triggered()
 {
-    m_transformWidget->resetBone(TransformWidget::kZ);
+    if (!m_boneMotionModel->resetBone(BoneMotionModel::kZ))
+        QMessageBox::warning(this, tr("The model or the bone is not selected."),
+                             tr("Select a model or a bone to reset Z position of the bone"));
 }
 
 void MainWindow::on_actionBoneRotationZero_triggered()
 {
-    m_transformWidget->resetBone(TransformWidget::kRotation);
+    if (!m_boneMotionModel->resetBone(BoneMotionModel::kRotation))
+        QMessageBox::warning(this, tr("The model or the bone is not selected."),
+                             tr("Select a model or a bone to reset rotation of the bone"));
 }
 
 void MainWindow::on_actionBoneResetAll_triggered()
 {
-    ui->scene->resetAllBones();
+    if (!m_boneMotionModel->resetAllBones())
+        QMessageBox::warning(this, tr("The model is not selected."), tr("Select a model to reset bones"));
 }
 
 void MainWindow::on_actionTimeline_triggered()
@@ -308,4 +318,16 @@ void MainWindow::on_actionTransform_triggered()
 void MainWindow::on_actionTabs_triggered()
 {
     m_tabWidget->setVisible(true);
+}
+
+void MainWindow::on_actionBoneDialog_triggered()
+{
+    if (m_boneMotionModel->isBoneSelected()) {
+        BoneDialog *dialog = new BoneDialog(m_boneMotionModel, this);
+        dialog->exec();
+    }
+    else {
+        QMessageBox::warning(this, tr("The model or the bone is not selected."),
+                             tr("Select a model or a bone to open this dialog"));
+    }
 }

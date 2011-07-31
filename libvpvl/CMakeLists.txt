@@ -3,11 +3,10 @@ cmake_minimum_required(VERSION 2.6)
 set(VPVL_VERSION_MAJOR 0)
 set(VPVL_VERSION_COMPAT 1)
 set(VPVL_VERSION_MINOR 0)
-set(VPVL_VERSION_PATCH 0)
 
 # set library version
-set(VPVL_VERSION "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.${VPVL_VERSION_MINOR}.${VPVL_VERSION_PATCH}")
-set(VPVL_VERSION_COMPATIBLE "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.0.0")
+set(VPVL_VERSION "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.${VPVL_VERSION_MINOR}")
+set(VPVL_VERSION_COMPATIBLE "${VPVL_VERSION_MAJOR}.${VPVL_VERSION_COMPAT}.0")
 
 # project configuration
 project(libvpvl)
@@ -115,8 +114,10 @@ if(VPVL_OPENGL_RENDERER)
   list(APPEND vpvl_public_headers include/vpvl/gl/Renderer.h)
 endif()
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/vpvl/config.h.cmake
-               ${CMAKE_CURRENT_SOURCE_DIR}/include/vpvl/config.h)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/include/vpvl/config.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/vpvl/config.h")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/vpvl.pc.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vpvl.pc" @ONLY)
 
 add_library(vpvl ${VPVL_LIB_TYPE} ${vpvl_sources} ${vpvl_public_headers} ${vpvl_internal_headers})
 set_target_properties(vpvl PROPERTIES VERSION ${VPVL_VERSION} SOVERSION ${VPVL_VERSION_COMPATIBLE})
@@ -136,7 +137,7 @@ if(VPVL_USE_ALLEGRO5)
 endif()
 
 set(VPVL_OUTPUT_NAME "vpvl")
-set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+set(LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/lib)
 append_lib_type_suffix(VPVL_OUTPUT_NAME)
 append_lib_linkage_suffix(VPVL_OUTPUT_NAME)
 set_target_properties(vpvl PROPERTIES OUTPUT_NAME ${VPVL_OUTPUT_NAME})
@@ -162,8 +163,10 @@ if(MSVC)
   # disable _CRT_SECURE_NO_WARNINGS for surpressing warnings from vpvl/common.h
   add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
 else()
-  install(TARGETS vpvl DESTINATION lib)
-  install(DIRECTORY include/vpvl DESTINATION include PATTERN "*.h" PATTERN "internal" PATTERN ".svn" EXCLUDE)
+  install(TARGETS vpvl DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
+  install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/vpvl.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
+  install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/vpvl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include"
+      PATTERN "*.h" PATTERN "internal" PATTERN ".svn" EXCLUDE)
 endif()
 
 # link with OpenGL and GLEW
@@ -212,3 +215,4 @@ if(VPVL_BUILD_TESTS)
   target_link_libraries(vpvl_test vpvl ${GTEST_MAIN_LIB} ${GTEST_LIB})
   include_directories(${GTEST_INCLUDE_DIR})
 endif()
+
