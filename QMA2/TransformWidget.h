@@ -13,9 +13,11 @@ class PMDModel;
 }
 
 namespace Ui {
-    class TransformWidget;
+class TransformWidget;
 }
 
+class BoneMotionModel;
+class FaceMotionModel;
 class QSettings;
 
 class TransformButton : public QPushButton
@@ -23,17 +25,11 @@ class TransformButton : public QPushButton
     Q_OBJECT
 
 public:
-    enum Coordinate {
-        kLocal,
-        kGlobal,
-        kView
-    };
-
     explicit TransformButton(QWidget *parent = 0);
     ~TransformButton();
 
-    void setBone(vpvl::Bone *value) { m_bone = value; }
-    void setAngle(const btVector3 &angle) { m_angle = angle; }
+    void setAngle(const btVector3 &value) { m_angle = value; }
+    void setBoneMotionModel(BoneMotionModel *value) { m_boneMotionModel = value; }
 
 public slots:
     void setMode(int value);
@@ -44,12 +40,11 @@ protected:
     virtual void mouseReleaseEvent(QMouseEvent *event);
 
 private:
-    vpvl::Bone *m_bone;
+    BoneMotionModel *m_boneMotionModel;
     btVector3 m_angle;
     QCursor m_cursor;
     QPoint m_drag;
     QPoint m_pos;
-    Coordinate m_mode;
 };
 
 class TransformWidget : public QWidget
@@ -63,13 +58,13 @@ public:
         kZ,
         kRotation
     };
-    explicit TransformWidget(QSettings *settings, QWidget *parent = 0);
+    explicit TransformWidget(QSettings *settings,
+                             BoneMotionModel *bmm,
+                             FaceMotionModel *fmm,
+                             QWidget *parent = 0);
     ~TransformWidget();
 
-    void resetBone(ResetBoneType type);
-
 public slots:
-    void setModel(vpvl::PMDModel *value);
     void setCameraPerspective(const btVector3 &pos, const btVector3 &angle, float fovy, float distance);
 
 signals:
@@ -80,10 +75,10 @@ protected:
     void closeEvent(QCloseEvent *event);
 
 private slots:
-    void on_faceWeightSlider_sliderMoved(int position);
+    void on_faceWeightSlider_valueChanged(int value);
+    void on_faceWeightSpinBox_valueChanged(double value);
     void on_faces_clicked(const QModelIndex &index);
-    void on_faceWeightValue_returnPressed();
-    void on_bones_pressed(const QModelIndex &index);
+    void on_bones_clicked(const QModelIndex &index);
     void on_comboBox_currentIndexChanged(int index);
     void on_registerButton_clicked();
 

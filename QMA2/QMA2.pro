@@ -11,8 +11,8 @@ CONFIG(release, debug|release) {
   LIBS += -lvpvl
 }
 
-LIBS += -L/usr/local/lib -lBulletCollision -lBulletDynamics -lBulletSoftBody -lLinearMath -lGLEW
-INCLUDEPATH += ../libvpvl/include /usr/local/include/bullet
+LIBS += -L/opt/local/lib -lBulletCollision -lBulletDynamics -lBulletSoftBody -lLinearMath -lGLEW
+INCLUDEPATH += ../libvpvl/include /opt/local/include /opt/local/include/bullet
 
 SOURCES += main.cc\
            MainWindow.cc \
@@ -22,7 +22,11 @@ SOURCES += main.cc\
     FaceWidget.cc \
     CameraPerspectiveWidget.cc \
     TransformWidget.cc \
-    TabWidget.cc
+    TabWidget.cc \
+    MotionBaseModel.cc \
+    BoneMotionModel.cc \
+    FaceMotionModel.cc \
+    BoneDialog.cc
 
 HEADERS  += MainWindow.h \
             SceneWidget.h \
@@ -32,7 +36,11 @@ HEADERS  += MainWindow.h \
     CameraPerspectiveWidget.h \
     TransformWidget.h \
     util.h \
-    TabWidget.h
+    TabWidget.h \
+    MotionBaseModel.h \
+    BoneMotionModel.h \
+    FaceMotionModel.h \
+    BoneDialog.h
 
 RESOURCES += resources/QMA2.qrc
 
@@ -46,4 +54,5 @@ macx {
 FORMS += \
     TransformWidget.ui \
     MainWindow.ui \
-    TabWidget.ui
+    TabWidget.ui \
+    BoneDialog.ui

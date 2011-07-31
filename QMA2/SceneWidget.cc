@@ -338,20 +338,6 @@ void SceneWidget::setCurrentFPS(int value)
     }
 }
 
-void SceneWidget::resetAllBones()
-{
-    vpvl::PMDModel *model = selectedModel();
-    if (model)
-        resetAllBones(model);
-    else
-        QMessageBox::warning(this, tr("The model is not selected."), tr("Select a model to reset bones"));
-}
-
-void SceneWidget::resetAllBones(vpvl::PMDModel *model)
-{
-    model->smearAllBonesToDefault(0.0f);
-}
-
 void SceneWidget::addModel()
 {
     stopSceneUpdateTimer();
@@ -437,6 +423,15 @@ void SceneWidget::addAsset()
         delete progress;
     }
     startSceneUpdateTimer();
+}
+
+void SceneWidget::seekMotion(float frameIndex)
+{
+    vpvl::Scene *scene = m_renderer->scene();
+    scene->updateModelView(0);
+    scene->updateProjection(0);
+    scene->seek(frameIndex);
+    updateGL();
 }
 
 void SceneWidget::setCamera()
@@ -653,7 +648,7 @@ void SceneWidget::timerEvent(QTimerEvent *event)
         vpvl::Scene *scene = m_renderer->scene();
         scene->updateModelView(0);
         scene->updateProjection(0);
-        scene->update(0.5f);
+        //scene->update(0.5f);
         updateGL();
     }
 }
@@ -715,6 +710,8 @@ vpvl::PMDModel *SceneWidget::addModelInternal(const QString &baseName, const QDi
                 }
             }
             m_models[key] = model;
+            // force to render an added model
+            m_renderer->scene()->seek(0.0f);
             emit modelDidAdd(model);
         }
         else {

@@ -98,13 +98,13 @@
     <property name="title">
      <string>&amp;Bone</string>
     </property>
-    <addaction name="actionBoneXCoordinateZero"/>
-    <addaction name="actionBoneYCoordinateZero"/>
-    <addaction name="actionBoneZCoordinateZero"/>
+    <addaction name="actionBoneXPositionZero"/>
+    <addaction name="actionBoneYPositionZero"/>
+    <addaction name="actionBoneZPositionZero"/>
     <addaction name="actionBoneRotationZero"/>
     <addaction name="actionBoneResetAll"/>
     <addaction name="separator"/>
-    <addaction name="actionDirect_coordinate_input"/>
+    <addaction name="actionBoneDialog"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuScene"/>
@@ -163,10 +163,13 @@
   </action>
   <action name="actionSetCamera">
    <property name="text">
-    <string>Set camera</string>
+    <string>Set camera motion</string>
+   </property>
+   <property name="toolTip">
+    <string>Set a camera motion</string>
    </property>
    <property name="statusTip">
-    <string>Set camera motion to the scene.</string>
+    <string>Set a camera motion to the scene.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+C</string>
@@ -359,9 +362,12 @@
     <string>Ctrl+Shift+P</string>
    </property>
   </action>
-  <action name="actionBoneXCoordinateZero">
+  <action name="actionBoneXPositionZero">
    <property name="text">
-    <string>Make X axis of bone zero</string>
+    <string>Make X position of bone zero</string>
+   </property>
+   <property name="toolTip">
+    <string>Make X position of the bone zero</string>
    </property>
    <property name="statusTip">
     <string>Reset X axis of the selected bone to the selected model.</string>
@@ -370,9 +376,12 @@
     <string>Ctrl+Alt+R, X</string>
    </property>
   </action>
-  <action name="actionBoneYCoordinateZero">
+  <action name="actionBoneYPositionZero">
    <property name="text">
-    <string>Make Y axis of bone zero</string>
+    <string>Make Y position of bone zero</string>
+   </property>
+   <property name="toolTip">
+    <string>Make Y position of the bone zero</string>
    </property>
    <property name="statusTip">
     <string>Reset Y axis of the selected bone to the selected model.</string>
@@ -381,9 +390,12 @@
     <string>Ctrl+Alt+R, Y</string>
    </property>
   </action>
-  <action name="actionBoneZCoordinateZero">
+  <action name="actionBoneZPositionZero">
    <property name="text">
-    <string>Make Z axis of bone zero</string>
+    <string>Make Z position of bone zero</string>
+   </property>
+   <property name="toolTip">
+    <string>Make Z position of the bone zero</string>
    </property>
    <property name="statusTip">
     <string>Reset Z axis of the selected bone to the selected model.</string>
@@ -396,6 +408,9 @@
    <property name="text">
     <string>Make rotation of bone zero</string>
    </property>
+   <property name="toolTip">
+    <string>Make rotation of the bone zero</string>
+   </property>
    <property name="statusTip">
     <string>Reset rotation of the selected bone to the selected model.</string>
    </property>
@@ -403,9 +418,12 @@
     <string>Ctrl+Alt+R, R</string>
    </property>
   </action>
-  <action name="actionDirect_coordinate_input">
+  <action name="actionBoneDialog">
    <property name="text">
-    <string>Open direct coordinate dialog</string>
+    <string>Open bone dialog</string>
+   </property>
+   <property name="toolTip">
+    <string>Open bone dialog to change position or rotation of the bone manually</string>
    </property>
    <property name="statusTip">
     <string>Open direct coordinate dialog.</string>
@@ -414,6 +432,9 @@
   <action name="actionBoneResetAll">
    <property name="text">
     <string>Reset all bone's position and rotation</string>
+   </property>
+   <property name="toolTip">
+    <string>Reset the all bone's position and rotation</string>
    </property>
    <property name="statusTip">
     <string>Reset all bone's position and rotation to the selected model.</string>

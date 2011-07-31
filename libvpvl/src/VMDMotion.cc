@@ -222,8 +222,8 @@ void VMDMotion::attachModel(PMDModel *model)
         if (m_enableRelocation && m_boneMotion.hasCenterBoneMotion()) {
             Bone *root = model->mutableRootBone();
             Bone *center = Bone::centerBone(&model->bones());
-            btTransform transform = root->transform().inverse();
-            btVector3 position = transform * center->transform().getOrigin();
+            btTransform transform = root->localTransform().inverse();
+            btVector3 position = transform * center->localTransform().getOrigin();
             btVector3 centerPosition = center->originPosition();
             btVector3 offset = position - centerPosition;
             offset.setY(0.0f);
@@ -240,6 +240,14 @@ void VMDMotion::attachModel(PMDModel *model)
     }
     if (!m_ignoreStatic)
         m_beginningNonControlledBlend = 10.0f;
+}
+
+void VMDMotion::seek(float frameIndex)
+{
+    m_boneMotion.setBlendRate(m_boneMotion.blendRate());
+    m_faceMotion.setBlendRate(1.0f);
+    m_boneMotion.seek(frameIndex);
+    m_faceMotion.seek(frameIndex);
 }
 
 void VMDMotion::update(float deltaFrame)
